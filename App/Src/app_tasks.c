@@ -6,6 +6,7 @@
 
 #include "app_at_protocol.h"
 #include "app_config.h"
+#include "app_line_reader.h"
 #include "app_output.h"
 #include "app_runtime.h"
 #include "app_uart_tunnel.h"
@@ -140,12 +141,14 @@ void App_SystemTask(void *argument)
 void App_AtTask(void *argument)
 {
     char line_buffer[APP_AT_PROTOCOL_MAX_LINE_LENGTH] = {0};
-    size_t line_length = 0U;
+    AppLineReader line_reader = {0};
     uint8_t byte = 0U;
-    bool is_discarding_line = false;
-    bool previous_byte_was_carriage_return = false;
 
     (void)argument;
+    if (!AppLineReader_Init(&line_reader, line_buffer, sizeof(line_buffer)))
+    {
+        Error_Handler();
+    }
     App_RuntimeStartUart1Receive();
 
     for (;;)
@@ -154,42 +157,26 @@ void App_AtTask(void *argument)
 
         if (App_RuntimeConsumeRxOverflow(1U))
         {
-            line_length = 0U;
-            is_discarding_line = false;
-            previous_byte_was_carriage_return = false;
+            AppLineReader_Reset(&line_reader);
             (void)App_RuntimeSendText(&huart1, "+ERROR:RX_OVERFLOW\r\n");
             continue;
         }
 
         while (App_RuntimePopRxByte(1U, &byte))
         {
-            if (is_discarding_line)
-            {
-                if (previous_byte_was_carriage_return && (byte == '\n'))
-                {
-                    is_discarding_line = false;
-                }
-                previous_byte_was_carriage_return = (byte == '\r');
-                continue;
-            }
+            const AppLineReaderStatus line_status =
+                AppLineReader_Push(&line_reader, byte);
 
-            if ((line_length + 1U) >= sizeof(line_buffer))
+            if (line_status == APP_LINE_READER_TOO_LONG)
             {
-                line_length = 0U;
-                is_discarding_line = true;
-                previous_byte_was_carriage_return = (byte == '\r');
                 (void)App_RuntimeSendText(&huart1, "+ERROR:LINE_TOO_LONG\r\n");
                 continue;
             }
 
-            line_buffer[line_length++] = (char)byte;
-            if ((line_length >= 2U)
-                && (line_buffer[line_length - 2U] == '\r')
-                && (line_buffer[line_length - 1U] == '\n'))
+            if (line_status == APP_LINE_READER_COMPLETE)
             {
-                line_buffer[line_length] = '\0';
-                App_AtProcessLine(line_buffer);
-                line_length = 0U;
+                App_AtProcessLine(AppLineReader_GetLine(&line_reader));
+                AppLineReader_Reset(&line_reader);
             }
         }
     }

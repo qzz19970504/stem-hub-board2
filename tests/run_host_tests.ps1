@@ -10,6 +10,7 @@ New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null
 
 $testCases = @(
     @{ Name = 'test_at_protocol'; Sources = @('app_at_protocol.c') },
+    @{ Name = 'test_line_reader'; Sources = @('app_line_reader.c') },
     @{ Name = 'test_ring_buffer'; Sources = @('app_ring_buffer.c') },
     @{ Name = 'test_output_math'; Sources = @('app_output_math.c') },
     @{ Name = 'test_uart_tunnel'; Sources = @('app_uart_tunnel.c') }

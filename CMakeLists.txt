@@ -45,6 +45,7 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add sources to executable
 set(APP_SOURCES
     App/Src/app_at_protocol.c
+    App/Src/app_line_reader.c
     App/Src/app_output.c
     App/Src/app_output_math.c
     App/Src/app_ring_buffer.c
