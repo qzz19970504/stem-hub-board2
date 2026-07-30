@@ -74,4 +74,14 @@ typedef struct
  */
 AppAtParseStatus AppAtProtocol_ParseLine(const char *line, AppAtCommand *out_command);
 
+/**
+ * Parse one CRLF-terminated frame with an explicit byte length.
+ *
+ * Embedded NUL bytes are never treated as string terminators. A binary frame
+ * that is not an AT candidate is classified as APP_AT_PARSE_NOT_AT.
+ */
+AppAtParseStatus AppAtProtocol_ParseFrame(const uint8_t *frame,
+                                          size_t frame_length,
+                                          AppAtCommand *out_command);
+
 #endif

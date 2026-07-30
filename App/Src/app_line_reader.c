@@ -71,6 +71,16 @@ const char *AppLineReader_GetLine(const AppLineReader *reader)
     return reader->buffer;
 }
 
+size_t AppLineReader_GetLineLength(const AppLineReader *reader)
+{
+    if ((reader == NULL) || !reader->has_complete_line)
+    {
+        return 0U;
+    }
+
+    return reader->length;
+}
+
 void AppLineReader_Reset(AppLineReader *reader)
 {
     if ((reader == NULL) || (reader->buffer == NULL))

@@ -38,6 +38,10 @@ int main(void)
 {
     AppAtCommand command = {0};
     static const uint8_t binary_payload[] = {0x00U, 0xFFU, 0x10U};
+    static const uint8_t binary_non_at_frame[] = {'P', 0x00U, 'Q', '\r', '\n'};
+    static const uint8_t binary_at_frame[] = {
+        'A', 'T', '+', 'P', 'W', 'M', '=', '1', 0x00U, '\r', '\n'
+    };
 
     expect_nmos("AT+NMOS1=ON\r\n", 1U, true);
     expect_nmos("AT+NMOS2=OFF\r\n", 2U, false);
@@ -89,6 +93,14 @@ int main(void)
     assert(AppAtProtocol_ParseLine("at+NMOS1=ON\r\n", &command) == APP_AT_PARSE_INVALID);
     assert(AppAtProtocol_ParseLine(NULL, &command) == APP_AT_PARSE_INVALID);
     assert(AppAtProtocol_ParseLine("AT+PWM=1\r\n", NULL) == APP_AT_PARSE_INVALID);
+    assert(AppAtProtocol_ParseFrame(binary_non_at_frame,
+                                    sizeof(binary_non_at_frame),
+                                    &command)
+           == APP_AT_PARSE_NOT_AT);
+    assert(AppAtProtocol_ParseFrame(binary_at_frame,
+                                    sizeof(binary_at_frame),
+                                    &command)
+           == APP_AT_PARSE_INVALID);
 
     return 0;
 }

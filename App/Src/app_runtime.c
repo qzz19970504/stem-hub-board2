@@ -27,6 +27,7 @@ static AppUartRuntime app_uart_runtimes[] = {
 static osSemaphoreId_t app_uart1_rx_semaphore;
 static osSemaphoreId_t app_bridge_rx_semaphore;
 static osMutexId_t app_uart_tx_mutex;
+static osMutexId_t app_bridge_mutex;
 static osEventFlagsId_t app_bridge_flags;
 
 static AppUartRuntime *App_RuntimeFindUartByIndex(uint8_t uart_index)
@@ -101,11 +102,13 @@ void App_RuntimeCreateObjects(void)
     app_uart1_rx_semaphore = osSemaphoreNew(32U, 0U, NULL);
     app_bridge_rx_semaphore = osSemaphoreNew(32U, 0U, NULL);
     app_uart_tx_mutex = osMutexNew(NULL);
+    app_bridge_mutex = osMutexNew(NULL);
     app_bridge_flags = osEventFlagsNew(NULL);
 
     App_RuntimeFailFastIfObjectMissing(app_uart1_rx_semaphore);
     App_RuntimeFailFastIfObjectMissing(app_bridge_rx_semaphore);
     App_RuntimeFailFastIfObjectMissing(app_uart_tx_mutex);
+    App_RuntimeFailFastIfObjectMissing(app_bridge_mutex);
     App_RuntimeFailFastIfObjectMissing(app_bridge_flags);
 }
 
@@ -185,9 +188,11 @@ void App_RuntimeSetBridgeEnabled(AppBridgeTarget target, bool enabled)
         flags |= APP_BRIDGE_MASK_UART3;
     }
 
+    App_RuntimeLockBridge();
     if (enabled)
     {
         (void)osEventFlagsSet(app_bridge_flags, flags);
+        App_RuntimeUnlockBridge();
         return;
     }
 
@@ -200,12 +205,29 @@ void App_RuntimeSetBridgeEnabled(AppBridgeTarget target, bool enabled)
     {
         App_RuntimeFlushRx(3U);
     }
+    App_RuntimeUnlockBridge();
 }
 
 uint32_t App_RuntimeGetBridgeMask(void)
 {
     return osEventFlagsGet(app_bridge_flags)
         & (APP_BRIDGE_MASK_UART2 | APP_BRIDGE_MASK_UART3);
+}
+
+void App_RuntimeLockBridge(void)
+{
+    if (osMutexAcquire(app_bridge_mutex, osWaitForever) != osOK)
+    {
+        Error_Handler();
+    }
+}
+
+void App_RuntimeUnlockBridge(void)
+{
+    if (osMutexRelease(app_bridge_mutex) != osOK)
+    {
+        Error_Handler();
+    }
 }
 
 HAL_StatusTypeDef App_RuntimeSendBytes(UART_HandleTypeDef *uart,

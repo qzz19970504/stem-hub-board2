@@ -2,55 +2,57 @@
 
 #include <string.h>
 
-static bool AppAtProtocol_IsAtCandidate(const char *line)
+static bool AppAtProtocol_IsAtCandidate(const uint8_t *frame, size_t frame_length)
 {
-    if (line == NULL)
+    if ((frame == NULL) || (frame_length < 2U))
     {
         return false;
     }
 
-    return ((line[0] == 'A') || (line[0] == 'a'))
-        && ((line[1] == 'T') || (line[1] == 't'));
+    return ((frame[0] == (uint8_t)'A') || (frame[0] == (uint8_t)'a'))
+        && ((frame[1] == (uint8_t)'T') || (frame[1] == (uint8_t)'t'));
 }
 
-static bool AppAtProtocol_HasValidFrame(const char *line, size_t *body_length)
+static bool AppAtProtocol_HasValidFrame(const uint8_t *frame,
+                                        size_t frame_length,
+                                        size_t *body_length)
 {
-    size_t line_length;
     size_t character_index;
 
-    if ((line == NULL) || (body_length == NULL))
+    if ((frame == NULL) || (body_length == NULL))
     {
         return false;
     }
 
-    line_length = strlen(line);
-    if ((line_length < 2U) || (line_length >= APP_AT_PROTOCOL_MAX_LINE_LENGTH))
+    if ((frame_length < 2U) || (frame_length >= APP_AT_PROTOCOL_MAX_LINE_LENGTH))
     {
         return false;
     }
 
-    if ((line[line_length - 2U] != '\r') || (line[line_length - 1U] != '\n'))
+    if ((frame[frame_length - 2U] != (uint8_t)'\r')
+        || (frame[frame_length - 1U] != (uint8_t)'\n'))
     {
         return false;
     }
 
-    for (character_index = 0U; character_index < (line_length - 2U); ++character_index)
+    for (character_index = 0U; character_index < (frame_length - 2U); ++character_index)
     {
-        const char character = line[character_index];
+        const uint8_t character = frame[character_index];
 
-        if ((character == ' ') || (character == '\t')
-            || (character == '\r') || (character == '\n'))
+        if ((character == (uint8_t)'\0')
+            || (character == (uint8_t)' ') || (character == (uint8_t)'\t')
+            || (character == (uint8_t)'\r') || (character == (uint8_t)'\n'))
         {
             return false;
         }
 
-        if ((character >= 'a') && (character <= 'z'))
+        if ((character >= (uint8_t)'a') && (character <= (uint8_t)'z'))
         {
             return false;
         }
     }
 
-    *body_length = line_length - 2U;
+    *body_length = frame_length - 2U;
     return true;
 }
 
@@ -265,34 +267,36 @@ static bool AppAtProtocol_MatchBridge(const char *command_body,
     return false;
 }
 
-AppAtParseStatus AppAtProtocol_ParseLine(const char *line, AppAtCommand *out_command)
+AppAtParseStatus AppAtProtocol_ParseFrame(const uint8_t *frame,
+                                          size_t frame_length,
+                                          AppAtCommand *out_command)
 {
     char command_body[APP_AT_PROTOCOL_MAX_LINE_LENGTH];
     const char *value = NULL;
     size_t body_length = 0U;
     AppAtParseStatus parse_status;
 
-    if ((line == NULL) || (out_command == NULL))
+    if ((frame == NULL) || (out_command == NULL))
     {
         return APP_AT_PARSE_INVALID;
     }
 
-    if (!AppAtProtocol_HasValidFrame(line, &body_length))
+    if (!AppAtProtocol_HasValidFrame(frame, frame_length, &body_length))
     {
-        return AppAtProtocol_IsAtCandidate(line)
+        return AppAtProtocol_IsAtCandidate(frame, frame_length)
             ? APP_AT_PARSE_INVALID
             : APP_AT_PARSE_NOT_AT;
     }
 
-    if ((body_length < 3U) || (strncmp(line, "AT+", 3U) != 0))
+    if ((body_length < 3U) || (memcmp(frame, "AT+", 3U) != 0))
     {
-        return AppAtProtocol_IsAtCandidate(line)
+        return AppAtProtocol_IsAtCandidate(frame, frame_length)
             ? APP_AT_PARSE_INVALID
             : APP_AT_PARSE_NOT_AT;
     }
 
     (void)memset(out_command, 0, sizeof(*out_command));
-    (void)memcpy(command_body, line, body_length);
+    (void)memcpy(command_body, frame, body_length);
     command_body[body_length] = '\0';
 
     if (AppAtProtocol_MatchNmos(command_body, out_command)
@@ -322,4 +326,16 @@ AppAtParseStatus AppAtProtocol_ParseLine(const char *line, AppAtCommand *out_com
     }
 
     return APP_AT_PARSE_INVALID;
+}
+
+AppAtParseStatus AppAtProtocol_ParseLine(const char *line, AppAtCommand *out_command)
+{
+    if (line == NULL)
+    {
+        return APP_AT_PARSE_INVALID;
+    }
+
+    return AppAtProtocol_ParseFrame((const uint8_t *)line,
+                                    strlen(line),
+                                    out_command);
 }

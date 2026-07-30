@@ -42,6 +42,15 @@ void App_RuntimeSetBridgeEnabled(AppBridgeTarget target, bool enabled);
 /** Return the current APP_BRIDGE_MASK_* bit set. */
 uint32_t App_RuntimeGetBridgeMask(void);
 
+/**
+ * Serialize one bridge RX consume/send transaction against bridge disable.
+ *
+ * The bridge task must hold this lock while checking the enable mask, popping
+ * UART2/3 bytes, and publishing the corresponding UART1 event.
+ */
+void App_RuntimeLockBridge(void);
+void App_RuntimeUnlockBridge(void);
+
 /** Send bytes under the shared UART transmit mutex. */
 HAL_StatusTypeDef App_RuntimeSendBytes(UART_HandleTypeDef *uart,
                                        const uint8_t *bytes,

@@ -25,17 +25,17 @@ static void App_AtSendParseError(AppAtParseStatus parse_status)
     (void)App_RuntimeSendText(&huart1, error);
 }
 
-static void App_AtForwardLine(const char *line)
+static void App_AtForwardFrame(const uint8_t *frame, size_t frame_length)
 {
     const uint32_t bridge_mask = App_RuntimeGetBridgeMask();
 
     if ((bridge_mask & APP_BRIDGE_MASK_UART2) != 0U)
     {
-        (void)App_RuntimeSendText(&huart2, line);
+        (void)App_RuntimeSendBytes(&huart2, frame, (uint16_t)frame_length);
     }
     if ((bridge_mask & APP_BRIDGE_MASK_UART3) != 0U)
     {
-        (void)App_RuntimeSendText(&huart3, line);
+        (void)App_RuntimeSendBytes(&huart3, frame, (uint16_t)frame_length);
     }
 }
 
@@ -106,14 +106,15 @@ static void App_AtHandleCommand(const AppAtCommand *command)
         success ? "OK\r\n" : "+ERROR:PARSE\r\n");
 }
 
-static void App_AtProcessLine(const char *line)
+static void App_AtProcessFrame(const uint8_t *frame, size_t frame_length)
 {
     AppAtCommand command = {0};
-    const AppAtParseStatus parse_status = AppAtProtocol_ParseLine(line, &command);
+    const AppAtParseStatus parse_status =
+        AppAtProtocol_ParseFrame(frame, frame_length, &command);
 
     if (parse_status == APP_AT_PARSE_NOT_AT)
     {
-        App_AtForwardLine(line);
+        App_AtForwardFrame(frame, frame_length);
         return;
     }
 
@@ -175,7 +176,9 @@ void App_AtTask(void *argument)
 
             if (line_status == APP_LINE_READER_COMPLETE)
             {
-                App_AtProcessLine(AppLineReader_GetLine(&line_reader));
+                App_AtProcessFrame(
+                    (const uint8_t *)AppLineReader_GetLine(&line_reader),
+                    AppLineReader_GetLineLength(&line_reader));
                 AppLineReader_Reset(&line_reader);
             }
         }
@@ -190,20 +193,23 @@ static void App_BridgeDrainUart(uint8_t uart_index, uint32_t enable_mask)
     size_t event_length;
     uint8_t byte;
 
-    if ((App_RuntimeGetBridgeMask() & enable_mask) == 0U)
-    {
-        App_RuntimeFlushRx(uart_index);
-        return;
-    }
-
-    if (App_RuntimeConsumeRxOverflow(uart_index))
-    {
-        (void)App_RuntimeSendText(&huart1, "+ERROR:RX_OVERFLOW\r\n");
-        return;
-    }
-
     do
     {
+        App_RuntimeLockBridge();
+        if ((App_RuntimeGetBridgeMask() & enable_mask) == 0U)
+        {
+            App_RuntimeFlushRx(uart_index);
+            App_RuntimeUnlockBridge();
+            return;
+        }
+
+        if (App_RuntimeConsumeRxOverflow(uart_index))
+        {
+            (void)App_RuntimeSendText(&huart1, "+ERROR:RX_OVERFLOW\r\n");
+            App_RuntimeUnlockBridge();
+            return;
+        }
+
         payload_length = 0U;
         while ((payload_length < sizeof(payload))
                && App_RuntimePopRxByte(uart_index, &byte))
@@ -224,6 +230,7 @@ static void App_BridgeDrainUart(uint8_t uart_index, uint32_t enable_mask)
                 (const uint8_t *)event,
                 (uint16_t)event_length);
         }
+        App_RuntimeUnlockBridge();
     } while (payload_length == sizeof(payload));
 }
 

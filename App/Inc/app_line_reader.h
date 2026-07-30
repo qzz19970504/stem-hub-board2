@@ -31,6 +31,9 @@ AppLineReaderStatus AppLineReader_Push(AppLineReader *reader, uint8_t byte);
 /** Return the completed NUL-terminated line, or NULL when incomplete. */
 const char *AppLineReader_GetLine(const AppLineReader *reader);
 
+/** Return the completed line length in bytes, or zero when incomplete. */
+size_t AppLineReader_GetLineLength(const AppLineReader *reader);
+
 /** Clear accumulated state and leave the reader ready for a new line. */
 void AppLineReader_Reset(AppLineReader *reader);
 
