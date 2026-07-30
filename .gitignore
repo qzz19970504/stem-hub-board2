@@ -1,0 +1,4 @@
+build/
+.worktrees/
+*.exe
+mx.scratch/
