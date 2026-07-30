@@ -43,13 +43,27 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 )
 
 # Add sources to executable
+set(APP_SOURCES
+    App/Src/app_at_protocol.c
+    App/Src/app_output.c
+    App/Src/app_output_math.c
+    App/Src/app_ring_buffer.c
+    App/Src/app_runtime.c
+    App/Src/app_tasks.c
+    App/Src/app_uart_tunnel.c
+)
+
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user sources here
+    ${APP_SOURCES}
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined include paths
+    App/Inc
+)
+
+set_source_files_properties(${APP_SOURCES} PROPERTIES
+    COMPILE_OPTIONS "-Wall;-Wextra;-Werror"
 )
 
 # Add project symbols (macros)

@@ -25,6 +25,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "app_runtime.h"
+#include "app_output.h"
+#include "app_tasks.h"
 
 /* USER CODE END Includes */
 
@@ -47,26 +50,26 @@
 /* USER CODE BEGIN Variables */
 
 /* USER CODE END Variables */
-/* Definitions for defaultTask */
-osThreadId_t defaultTaskHandle;
-const osThreadAttr_t defaultTask_attributes = {
-  .name = "defaultTask",
+/* Definitions for systemTask */
+osThreadId_t systemTaskHandle;
+const osThreadAttr_t systemTask_attributes = {
+  .name = "systemTask",
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for myTask02 */
-osThreadId_t myTask02Handle;
-const osThreadAttr_t myTask02_attributes = {
-  .name = "myTask02",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+/* Definitions for atTask */
+osThreadId_t atTaskHandle;
+const osThreadAttr_t atTask_attributes = {
+  .name = "atTask",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityAboveNormal,
 };
-/* Definitions for myTask03 */
-osThreadId_t myTask03Handle;
-const osThreadAttr_t myTask03_attributes = {
-  .name = "myTask03",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+/* Definitions for bridgeTask */
+osThreadId_t bridgeTaskHandle;
+const osThreadAttr_t bridgeTask_attributes = {
+  .name = "bridgeTask",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -74,9 +77,9 @@ const osThreadAttr_t myTask03_attributes = {
 
 /* USER CODE END FunctionPrototypes */
 
-void StartDefaultTask(void *argument);
-void StartTask02(void *argument);
-void StartTask03(void *argument);
+void StartSystemTask(void *argument);
+void StartAtTask(void *argument);
+void StartBridgeTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -87,6 +90,8 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
   */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
+  App_OutputInit();
+  App_RuntimeCreateObjects();
 
   /* USER CODE END Init */
 
@@ -107,14 +112,14 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* creation of defaultTask */
-  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+  /* creation of systemTask */
+  systemTaskHandle = osThreadNew(StartSystemTask, NULL, &systemTask_attributes);
 
-  /* creation of myTask02 */
-  myTask02Handle = osThreadNew(StartTask02, NULL, &myTask02_attributes);
+  /* creation of atTask */
+  atTaskHandle = osThreadNew(StartAtTask, NULL, &atTask_attributes);
 
-  /* creation of myTask03 */
-  myTask03Handle = osThreadNew(StartTask03, NULL, &myTask03_attributes);
+  /* creation of bridgeTask */
+  bridgeTaskHandle = osThreadNew(StartBridgeTask, NULL, &bridgeTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -126,62 +131,62 @@ void MX_FREERTOS_Init(void) {
 
 }
 
-/* USER CODE BEGIN Header_StartDefaultTask */
+/* USER CODE BEGIN Header_StartSystemTask */
 /**
-  * @brief  Function implementing the defaultTask thread.
+  * @brief  Function implementing the systemTask thread.
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void *argument)
+/* USER CODE END Header_StartSystemTask */
+void StartSystemTask(void *argument)
 {
-  /* USER CODE BEGIN StartDefaultTask */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StartDefaultTask */
+  /* USER CODE BEGIN StartSystemTask */
+  App_SystemTask(argument);
+  /* USER CODE END StartSystemTask */
 }
 
-/* USER CODE BEGIN Header_StartTask02 */
+/* USER CODE BEGIN Header_StartAtTask */
 /**
-* @brief Function implementing the myTask02 thread.
+* @brief Function implementing the atTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartTask02 */
-void StartTask02(void *argument)
+/* USER CODE END Header_StartAtTask */
+void StartAtTask(void *argument)
 {
-  /* USER CODE BEGIN StartTask02 */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StartTask02 */
+  /* USER CODE BEGIN StartAtTask */
+  App_AtTask(argument);
+  /* USER CODE END StartAtTask */
 }
 
-/* USER CODE BEGIN Header_StartTask03 */
+/* USER CODE BEGIN Header_StartBridgeTask */
 /**
-* @brief Function implementing the myTask03 thread.
+* @brief Function implementing the bridgeTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartTask03 */
-void StartTask03(void *argument)
+/* USER CODE END Header_StartBridgeTask */
+void StartBridgeTask(void *argument)
 {
-  /* USER CODE BEGIN StartTask03 */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StartTask03 */
+  /* USER CODE BEGIN StartBridgeTask */
+  App_BridgeTask(argument);
+  /* USER CODE END StartBridgeTask */
 }
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
+
+void vApplicationStackOverflowHook(TaskHandle_t task_handle, char *task_name)
+{
+  (void)task_handle;
+  (void)task_name;
+  Error_Handler();
+}
+
+void vApplicationMallocFailedHook(void)
+{
+  Error_Handler();
+}
 
 /* USER CODE END Application */
 
