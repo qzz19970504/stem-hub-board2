@@ -53,6 +53,7 @@ int main(void)
     command = parse_ok("AT+PWM=100\r\n");
     assert(command.data.pwm.percent == 100U);
     assert(AppAtProtocol_ParseLine("AT+PWM=101\r\n", &command) == APP_AT_PARSE_RANGE);
+    assert(AppAtProtocol_ParseLine("AT+PWM=1000\r\n", &command) == APP_AT_PARSE_RANGE);
     assert(AppAtProtocol_ParseLine("AT+PWM=-1\r\n", &command) == APP_AT_PARSE_INVALID);
     assert(AppAtProtocol_ParseLine("AT+PWM=A\r\n", &command) == APP_AT_PARSE_INVALID);
 

@@ -109,7 +109,7 @@ static AppAtParseStatus AppAtProtocol_ParsePwm(const char *value, uint8_t *perce
     }
 
     value_length = strlen(value);
-    if ((value_length == 0U) || (value_length > 3U))
+    if (value_length == 0U)
     {
         return APP_AT_PARSE_INVALID;
     }
@@ -121,7 +121,11 @@ static AppAtParseStatus AppAtProtocol_ParsePwm(const char *value, uint8_t *perce
             return APP_AT_PARSE_INVALID;
         }
 
-        parsed_percent = (parsed_percent * 10U) + (uint32_t)(value[digit_index] - '0');
+        if (parsed_percent <= APP_PWM_MAX_PERCENT)
+        {
+            parsed_percent =
+                (parsed_percent * 10U) + (uint32_t)(value[digit_index] - '0');
+        }
     }
 
     if (parsed_percent > APP_PWM_MAX_PERCENT)
