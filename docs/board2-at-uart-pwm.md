@@ -66,7 +66,7 @@ cmake --build --preset Release
 
 1. 上电复位期间测量 PB4、PB15、PB6，确认三路均为低电平关闭状态。
 2. 确认 FreeRTOS 启动后 PA8 保持高电平，LED2 常亮。
-3. 在 PB9 测量约 1 kHz PWM；依次发送 0%、25%、50%、100%，确认占空比对应。
+3. 在 PB9 测量 25 kHz PWM；依次发送 0%、25%、50%、100%，确认占空比对应。
 4. 分别发送三路 NMOS 的 ON/OFF 指令，确认 ON 为高电平、OFF 为低电平。
 5. 单独启用 UART2、单独启用 UART3、同时启用两路，验证 UART1 非 AT 帧的目标选择。
 6. 从 UART2/UART3 注入包含 `00`、`0D`、`0A`、`FF` 的数据，确认 UART1 返回对应 HEX 事件。

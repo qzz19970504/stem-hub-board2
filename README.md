@@ -1,6 +1,6 @@
 # stem-hub-board2
 
-基于 STM32F103C8、STM32 HAL 和 FreeRTOS 的板2固件。UART1 负责 AT 控制和主机通信，UART2、UART3 可按命令启用为透传目标；应用层同时提供三路高有效 NMOS 输出、一路约 1 kHz PWM 和运行状态 LED。
+基于 STM32F103C8、STM32 HAL 和 FreeRTOS 的板2固件。UART1 负责 AT 控制和主机通信，UART2、UART3 可按命令启用为透传目标；应用层同时提供三路高有效 NMOS 输出、一路 25 kHz PWM 和运行状态 LED。
 
 ## 快速开始
 
@@ -81,7 +81,7 @@ cmake --build --preset Release
 | NMOS3 | PB6 | 高电平导通 | 低电平，关闭 |
 | 18V Buck | PB3 | 低电平开启 | 高电平，关闭 |
 | 12V Buck | PB12 | 低电平开启 | 高电平，关闭 |
-| PWM_LED | PB9/TIM4_CH4 | 高电平有效 | 约 1 kHz，0% |
+| PWM_LED | PB9/TIM4_CH4 | 高电平有效 | 25 kHz，0% |
 | LED2 | PA8 | 高电平点亮 | `systemTask` 启动后常亮 |
 
 NMOS 的安全初值同时写入 CubeMX GPIO 初始化代码和 `App_OutputInit()`。调度器启动前，应用会再次关闭三路 NMOS、把 PWM 比较值设为 0，并启动 TIM4_CH4 PWM。
@@ -124,7 +124,7 @@ UART1 数据先进入 64 B 中断接收块，再由 `HAL_UARTEx_RxEventCallback(
 ### 输出控制
 
 - `AT+NMOSx=ON` 调用 `App_OutputSetNmos()` 输出高电平；`OFF` 输出低电平。
-- `AT+PWM=<百分比>` 调用纯换算函数，以 `(ARR + 1) × 百分比 / 100` 计算 CCR。当前 ARR=999，因此 1% 对应 10 个计数。
+- `AT+PWM=<百分比>` 调用纯换算函数，以 `(ARR + 1) × 百分比 / 100` 计算 CCR。当前 ARR=2559，共有 2560 个计数级别。
 - 所有 AT 响应和 UART2/3 回传事件最终通过 UART 发送互斥锁串行发送，避免多任务输出交叉。
 
 ### 数据流
@@ -258,7 +258,7 @@ stem-hub-board2/
 | UART 环形缓冲 | 每路 256 B | `App/Inc/app_config.h` |
 | HEX 发送/事件载荷 | 最多 32 B | `App/Inc/app_config.h` |
 | UART 任务态发送超时 | 100 ms | `App/Inc/app_config.h` |
-| TIM4 PWM | PSC=63、ARR=999 | `Core/Src/tim.c`、`.ioc` |
+| TIM4 PWM | PSC=0、ARR=2559，频率 25 kHz | `Core/Src/tim.c`、`.ioc` |
 | USART IRQ 抢占优先级 | 5 | `Core/Src/usart.c`、`.ioc` |
 | FreeRTOS heap | 6144 B | `Core/Inc/FreeRTOSConfig.h`、`.ioc` |
 
