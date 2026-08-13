@@ -48,10 +48,12 @@ set(APP_SOURCES
     App/Src/app_line_reader.c
     App/Src/app_output.c
     App/Src/app_output_math.c
+    App/Src/app_output_state.c
     App/Src/app_ring_buffer.c
     App/Src/app_runtime.c
     App/Src/app_tasks.c
     App/Src/app_uart_tunnel.c
+    App/Src/app_status.c
 )
 
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE

@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include "app_config.h"
+#include "app_power.h"
 
 typedef enum
 {
@@ -20,6 +21,8 @@ typedef enum
     APP_AT_COMMAND_NONE = 0,
     APP_AT_COMMAND_SET_NMOS,
     APP_AT_COMMAND_SET_PWM,
+    APP_AT_COMMAND_SET_POWER,
+    APP_AT_COMMAND_GET_STATUS,
     APP_AT_COMMAND_SET_BRIDGE,
     APP_AT_COMMAND_SEND_UART
 } AppAtCommandType;
@@ -44,6 +47,12 @@ typedef struct
 
 typedef struct
 {
+    AppPowerRail rail;
+    bool enabled;
+} AppAtPowerCommand;
+
+typedef struct
+{
     AppBridgeTarget target;
     bool enabled;
 } AppAtBridgeCommand;
@@ -61,6 +70,7 @@ typedef struct
     {
         AppAtNmosCommand nmos;
         AppAtPwmCommand pwm;
+        AppAtPowerCommand power;
         AppAtBridgeCommand bridge;
         AppAtUartPayloadCommand uart_payload;
     } data;

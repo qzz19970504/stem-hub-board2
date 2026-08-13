@@ -34,6 +34,14 @@ static void expect_bridge(const char *line,
     assert(command.data.bridge.enabled == expected_enabled);
 }
 
+static void expect_power(const char *line, AppPowerRail rail, bool enabled)
+{
+    AppAtCommand command = parse_ok(line);
+    assert(command.type == APP_AT_COMMAND_SET_POWER);
+    assert(command.data.power.rail == rail);
+    assert(command.data.power.enabled == enabled);
+}
+
 int main(void)
 {
     AppAtCommand command = {0};
@@ -64,6 +72,13 @@ int main(void)
     expect_bridge("AT+UART2=ON\r\n", APP_BRIDGE_TARGET_UART2, true);
     expect_bridge("AT+UART3=OFF\r\n", APP_BRIDGE_TARGET_UART3, false);
     expect_bridge("AT+UART2&3=ON\r\n", APP_BRIDGE_TARGET_UART23, true);
+    expect_power("AT+12V=ON\r\n", APP_POWER_RAIL_12V, true);
+    expect_power("AT+12V=OFF\r\n", APP_POWER_RAIL_12V, false);
+    expect_power("AT+18V=ON\r\n", APP_POWER_RAIL_18V, true);
+    expect_power("AT+18V=OFF\r\n", APP_POWER_RAIL_18V, false);
+    command = parse_ok("AT+STATUS=?\r\n");
+    assert(command.type == APP_AT_COMMAND_GET_STATUS);
+    assert(AppAtProtocol_ParseLine("AT+STATUS?\r\n", &command) == APP_AT_PARSE_INVALID);
 
     command = parse_ok("AT+UARTTX=00FF10\r\n");
     assert(command.type == APP_AT_COMMAND_SEND_UART);

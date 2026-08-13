@@ -267,6 +267,28 @@ static bool AppAtProtocol_MatchBridge(const char *command_body,
     return false;
 }
 
+static bool AppAtProtocol_MatchPower(const char *command_body,
+                                     AppAtCommand *out_command)
+{
+    static const char *const prefixes[] = {"AT+12V=", "AT+18V="};
+    static const AppPowerRail rails[] = {APP_POWER_RAIL_12V, APP_POWER_RAIL_18V};
+    size_t index;
+    for (index = 0U; index < 2U; ++index)
+    {
+        const char *value = NULL;
+        bool enabled = false;
+        if (AppAtProtocol_MatchAssignment(prefixes[index], command_body, &value)
+            && AppAtProtocol_ParseOnOff(value, &enabled))
+        {
+            out_command->type = APP_AT_COMMAND_SET_POWER;
+            out_command->data.power.rail = rails[index];
+            out_command->data.power.enabled = enabled;
+            return true;
+        }
+    }
+    return false;
+}
+
 AppAtParseStatus AppAtProtocol_ParseFrame(const uint8_t *frame,
                                           size_t frame_length,
                                           AppAtCommand *out_command)
@@ -300,8 +322,15 @@ AppAtParseStatus AppAtProtocol_ParseFrame(const uint8_t *frame,
     command_body[body_length] = '\0';
 
     if (AppAtProtocol_MatchNmos(command_body, out_command)
+        || AppAtProtocol_MatchPower(command_body, out_command)
         || AppAtProtocol_MatchBridge(command_body, out_command))
     {
+        return APP_AT_PARSE_OK;
+    }
+
+    if (strcmp(command_body, "AT+STATUS=?") == 0)
+    {
+        out_command->type = APP_AT_COMMAND_GET_STATUS;
         return APP_AT_PARSE_OK;
     }
 

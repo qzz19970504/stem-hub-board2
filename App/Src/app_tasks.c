@@ -10,6 +10,7 @@
 #include "app_output.h"
 #include "app_runtime.h"
 #include "app_uart_tunnel.h"
+#include "app_status.h"
 #include "cmsis_os.h"
 #include "main.h"
 #include "usart.h"
@@ -78,17 +79,38 @@ static void App_AtSendUartPayload(const AppAtUartPayloadCommand *payload)
 
 static void App_AtHandleCommand(const AppAtCommand *command)
 {
+    AppOutputResult output_result = APP_OUTPUT_INVALID;
     bool success = false;
 
     switch (command->type)
     {
     case APP_AT_COMMAND_SET_NMOS:
-        success = App_OutputSetNmos(command->data.nmos.index,
-                                    command->data.nmos.enabled);
+        output_result = App_OutputSetNmos(command->data.nmos.index,
+                                          command->data.nmos.enabled);
         break;
     case APP_AT_COMMAND_SET_PWM:
-        success = App_OutputSetPwmPercent(command->data.pwm.percent);
+        output_result = App_OutputSetPwmPercent(command->data.pwm.percent);
         break;
+    case APP_AT_COMMAND_SET_POWER:
+        output_result = App_OutputSetPower(command->data.power.rail,
+                                           command->data.power.enabled);
+        break;
+    case APP_AT_COMMAND_GET_STATUS:
+    {
+        char status[APP_AT_PROTOCOL_MAX_LINE_LENGTH];
+        size_t status_length = 0U;
+        if (App_StatusEncode(App_OutputGetState(), status, sizeof(status), &status_length))
+        {
+            (void)App_RuntimeSendBytes(&huart1,
+                                       (const uint8_t *)status,
+                                       (uint16_t)status_length);
+        }
+        else
+        {
+            (void)App_RuntimeSendText(&huart1, "+ERROR:PARSE\r\n");
+        }
+        return;
+    }
     case APP_AT_COMMAND_SET_BRIDGE:
         App_RuntimeSetBridgeEnabled(command->data.bridge.target,
                                     command->data.bridge.enabled);
@@ -99,6 +121,21 @@ static void App_AtHandleCommand(const AppAtCommand *command)
         return;
     default:
         break;
+    }
+
+    if (output_result == APP_OUTPUT_DENIED_12V)
+    {
+        (void)App_RuntimeSendText(&huart1, "+ERROR:12V_DISABLED\r\n");
+        return;
+    }
+    if (output_result == APP_OUTPUT_DENIED_18V)
+    {
+        (void)App_RuntimeSendText(&huart1, "+ERROR:18V_DISABLED\r\n");
+        return;
+    }
+    if (output_result == APP_OUTPUT_OK)
+    {
+        success = true;
     }
 
     (void)App_RuntimeSendText(
