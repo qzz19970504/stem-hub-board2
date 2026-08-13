@@ -57,6 +57,10 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define BUCK18V_CTRL_Pin GPIO_PIN_3
+#define BUCK18V_CTRL_GPIO_Port GPIOB
+#define BUCK12V_CTRL_Pin GPIO_PIN_12
+#define BUCK12V_CTRL_GPIO_Port GPIOB
 #define NMOS2_Pin GPIO_PIN_15
 #define NMOS2_GPIO_Port GPIOB
 #define LED2_Pin GPIO_PIN_8

@@ -5,12 +5,30 @@
 #include "main.h"
 #include "tim.h"
 
+static AppOutputState app_output_state;
+
+static void App_OutputWriteAllState(void)
+{
+    HAL_GPIO_WritePin(BUCK12V_CTRL_GPIO_Port, BUCK12V_CTRL_Pin,
+                      app_output_state.power_12v_enabled ? GPIO_PIN_RESET : GPIO_PIN_SET);
+    HAL_GPIO_WritePin(BUCK18V_CTRL_GPIO_Port, BUCK18V_CTRL_Pin,
+                      app_output_state.power_18v_enabled ? GPIO_PIN_RESET : GPIO_PIN_SET);
+    HAL_GPIO_WritePin(NMOS1_GPIO_Port, NMOS1_Pin,
+                      app_output_state.nmos_enabled[0] ? GPIO_PIN_RESET : GPIO_PIN_SET);
+    HAL_GPIO_WritePin(NMOS2_GPIO_Port, NMOS2_Pin,
+                      app_output_state.nmos_enabled[1] ? GPIO_PIN_RESET : GPIO_PIN_SET);
+    HAL_GPIO_WritePin(NMOS3_GPIO_Port, NMOS3_Pin,
+                      app_output_state.nmos_enabled[2] ? GPIO_PIN_RESET : GPIO_PIN_SET);
+    __HAL_TIM_SET_COMPARE(&htim4,
+                          TIM_CHANNEL_4,
+                          App_OutputPwmPercentToCompare(app_output_state.pwm_percent,
+                                                        __HAL_TIM_GET_AUTORELOAD(&htim4)));
+}
+
 void App_OutputInit(void)
 {
-    HAL_GPIO_WritePin(NMOS1_GPIO_Port, NMOS1_Pin, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(NMOS2_GPIO_Port, NMOS2_Pin, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(NMOS3_GPIO_Port, NMOS3_Pin, GPIO_PIN_SET);
-    __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 0U);
+    AppOutputState_Init(&app_output_state);
+    App_OutputWriteAllState();
 
     if (HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4) != HAL_OK)
     {
@@ -18,46 +36,39 @@ void App_OutputInit(void)
     }
 }
 
-bool App_OutputSetNmos(uint8_t nmos_index, bool enabled)
+AppOutputResult App_OutputSetNmos(uint8_t nmos_index, bool enabled)
 {
-    GPIO_TypeDef *gpio_port;
-    uint16_t gpio_pin;
-    const GPIO_PinState pin_state = enabled ? GPIO_PIN_RESET : GPIO_PIN_SET;
-
-    switch (nmos_index)
+    const AppOutputResult result = AppOutputState_SetNmos(&app_output_state,
+                                                          nmos_index,
+                                                          enabled);
+    if (result == APP_OUTPUT_OK)
     {
-    case 1U:
-        gpio_port = NMOS1_GPIO_Port;
-        gpio_pin = NMOS1_Pin;
-        break;
-    case 2U:
-        gpio_port = NMOS2_GPIO_Port;
-        gpio_pin = NMOS2_Pin;
-        break;
-    case 3U:
-        gpio_port = NMOS3_GPIO_Port;
-        gpio_pin = NMOS3_Pin;
-        break;
-    default:
-        return false;
+        App_OutputWriteAllState();
     }
-
-    HAL_GPIO_WritePin(gpio_port, gpio_pin, pin_state);
-    return true;
+    return result;
 }
 
-bool App_OutputSetPwmPercent(uint8_t percent)
+AppOutputResult App_OutputSetPwmPercent(uint8_t percent)
 {
-    uint32_t compare;
-
-    if (percent > APP_PWM_MAX_PERCENT)
+    const AppOutputResult result = AppOutputState_SetPwm(&app_output_state, percent);
+    if (result == APP_OUTPUT_OK)
     {
-        return false;
+        App_OutputWriteAllState();
     }
+    return result;
+}
 
-    compare = App_OutputPwmPercentToCompare(
-        percent,
-        __HAL_TIM_GET_AUTORELOAD(&htim4));
-    __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, compare);
-    return true;
+AppOutputResult App_OutputSetPower(AppPowerRail rail, bool enabled)
+{
+    const AppOutputResult result = AppOutputState_SetPower(&app_output_state, rail, enabled);
+    if (result == APP_OUTPUT_OK)
+    {
+        App_OutputWriteAllState();
+    }
+    return result;
+}
+
+const AppOutputState *App_OutputGetState(void)
+{
+    return &app_output_state;
 }
