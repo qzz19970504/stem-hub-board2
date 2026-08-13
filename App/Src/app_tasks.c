@@ -111,7 +111,6 @@ static void App_AtHandleCommand(const AppAtCommand *command)
         }
         return;
     }
-        break;
     case APP_AT_COMMAND_SET_BRIDGE:
         App_RuntimeSetBridgeEnabled(command->data.bridge.target,
                                     command->data.bridge.enabled);
