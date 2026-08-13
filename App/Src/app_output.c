@@ -60,7 +60,20 @@ AppOutputResult App_OutputSetPwmPercent(uint8_t percent)
 
 AppOutputResult App_OutputSetPower(AppPowerRail rail, bool enabled)
 {
-    const AppOutputResult result = AppOutputState_SetPower(&app_output_state, rail, enabled);
+    AppOutputResult result;
+    if (!enabled && (rail == APP_POWER_RAIL_12V))
+    {
+        app_output_state.nmos_enabled[0] = false;
+        app_output_state.nmos_enabled[1] = false;
+        app_output_state.nmos_enabled[2] = false;
+        App_OutputWriteAllState();
+    }
+    else if (!enabled && (rail == APP_POWER_RAIL_18V))
+    {
+        app_output_state.pwm_percent = 0U;
+        App_OutputWriteAllState();
+    }
+    result = AppOutputState_SetPower(&app_output_state, rail, enabled);
     if (result == APP_OUTPUT_OK)
     {
         App_OutputWriteAllState();

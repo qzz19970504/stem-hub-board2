@@ -14,7 +14,7 @@ bool App_StatusEncode(const AppOutputState *state,
     }
     written = snprintf(output,
                        output_capacity,
-                       "+STATUS:12V=%s,18V=%s,NMOS1=%s,NMOS2=%s,NMOS3=%s,PWM=%u\r\n",
+                       "+STATUS:12V=%s,18V=%s,NMOS1=%s,NMOS2=%s,NMOS3=%s,PWM=%u\r\nOK\r\n",
                        state->power_12v_enabled ? "ON" : "OFF",
                        state->power_18v_enabled ? "ON" : "OFF",
                        state->nmos_enabled[0] ? "ON" : "OFF",

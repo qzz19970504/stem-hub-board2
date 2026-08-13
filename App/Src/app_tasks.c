@@ -104,7 +104,6 @@ static void App_AtHandleCommand(const AppAtCommand *command)
             (void)App_RuntimeSendBytes(&huart1,
                                        (const uint8_t *)status,
                                        (uint16_t)status_length);
-            (void)App_RuntimeSendText(&huart1, "OK\r\n");
         }
         else
         {
