@@ -13,6 +13,8 @@ $testCases = @(
     @{ Name = 'test_line_reader'; Sources = @('app_line_reader.c') },
     @{ Name = 'test_ring_buffer'; Sources = @('app_ring_buffer.c') },
     @{ Name = 'test_output_math'; Sources = @('app_output_math.c') },
+    @{ Name = 'test_pwm_fade'; Sources = @('app_pwm_fade.c') },
+    @{ Name = 'test_settings_record'; Sources = @('app_settings_record.c') },
     @{ Name = 'test_uart_tunnel'; Sources = @('app_uart_tunnel.c') },
     @{ Name = 'test_output_state'; Sources = @('app_output_state.c') },
     @{ Name = 'test_status'; Sources = @('app_status.c', 'app_output_state.c') }

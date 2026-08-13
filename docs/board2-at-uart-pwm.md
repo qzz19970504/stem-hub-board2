@@ -18,6 +18,8 @@
 | `AT+NMOS2=ON` / `OFF` | 控制 PB15；ON 输出高电平 |
 | `AT+NMOS3=ON` / `OFF` | 控制 PB6；ON 输出高电平 |
 | `AT+PWM=<0..100>` | 设置 PB9/TIM4_CH4 的整数百分比占空比 |
+| `AT+PWM_TIME=<0..10000>` | 设置渐变时间（ms），掉电保存 |
+| `AT+BREATH_TEST=ON` / `OFF` | 控制呼吸灯演示；需先开启 18V |
 | `AT+12V=ON` / `OFF` | 控制 PB12；低电平开启 12V Buck |
 | `AT+18V=ON` / `OFF` | 控制 PB3；低电平开启 18V Buck |
 | `AT+STATUS=?` | 查询 12V、18V、NMOS1/2/3 和 PWM 当前软件状态 |
@@ -40,11 +42,13 @@
 | `+ERROR:RX_OVERFLOW\r\n` | 软件环形缓冲溢出，受影响的缓存已清空 |
 | `+ERROR:12V_DISABLED\r\n` | 12V 未开启，不能开启 NMOS |
 | `+ERROR:18V_DISABLED\r\n` | 18V 未开启，不能设置非零 PWM |
+| `+ERROR:BREATH_ACTIVE\r\n` | 呼吸演示期间不接受普通 PWM 命令 |
+| `+ERROR:STORAGE\r\n` | 渐变时间写入 Flash 失败 |
 
 `AT+STATUS=?` 返回示例：
 
 ```text
-+STATUS:12V=OFF,18V=OFF,NMOS1=OFF,NMOS2=OFF,NMOS3=OFF,PWM=0
++STATUS:12V=OFF,18V=OFF,NMOS1=OFF,NMOS2=OFF,NMOS3=OFF,PWM=0,PWM_TARGET=0,PWM_TIME=500,BREATH=OFF
 OK
 ```
 

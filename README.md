@@ -225,7 +225,9 @@ stem-hub-board2/
 | `AT+NMOS1=ON` / `AT+NMOS1=OFF` | 控制 NMOS1 |
 | `AT+NMOS2=ON` / `AT+NMOS2=OFF` | 控制 NMOS2 |
 | `AT+NMOS3=ON` / `AT+NMOS3=OFF` | 控制 NMOS3 |
-| `AT+PWM=0..100` | 设置整数百分比占空比 |
+| `AT+PWM=0..100` | 设置 Gamma 2.2 映射后的感知亮度目标 |
+| `AT+PWM_TIME=0..10000` | 设置渐变时间（ms），默认 500，掉电保存 |
+| `AT+BREATH_TEST=ON|OFF` | 开启或关闭呼吸灯演示 |
 | `AT+12V=ON` / `AT+12V=OFF` | 启停 12V Buck |
 | `AT+18V=ON` / `AT+18V=OFF` | 启停 18V Buck |
 | `AT+STATUS=?` | 查询两路电源、NMOS1/2/3 和 PWM 状态 |
@@ -244,8 +246,12 @@ stem-hub-board2/
 - `+ERROR:RX_OVERFLOW\r\n`
 - `+ERROR:12V_DISABLED\r\n`
 - `+ERROR:18V_DISABLED\r\n`
+- `+ERROR:BREATH_ACTIVE\r\n`
+- `+ERROR:STORAGE\r\n`
 
 安全联锁：12V 关闭时 NMOS 不能开启，关闭 12V 会自动关闭三路 NMOS；18V 关闭时 PWM 只能设为 0%，关闭 18V 会自动清零 PWM。
+
+PWM 每 10 ms 非阻塞推进，状态中的 `PWM` 是当前感知亮度，`PWM_TARGET` 是目标。呼吸演示期间普通 PWM 命令无效，但关闭 18V 始终立即停止演示并熄灯。
 
 完整协议约束与响应含义见 [docs/board2-at-uart-pwm.md](docs/board2-at-uart-pwm.md)。
 

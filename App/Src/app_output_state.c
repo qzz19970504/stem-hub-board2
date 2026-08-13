@@ -8,6 +8,7 @@ void AppOutputState_Init(AppOutputState *state)
     if (state != NULL)
     {
         (void)memset(state, 0, sizeof(*state));
+        state->pwm_fade_duration_ms = APP_PWM_FADE_DEFAULT_MS;
     }
 }
 
@@ -36,6 +37,8 @@ AppOutputResult AppOutputState_SetPower(AppOutputState *state,
         if (!enabled)
         {
             state->pwm_percent = 0U;
+            state->pwm_target_percent = 0U;
+            state->breath_test_enabled = false;
         }
         return APP_OUTPUT_OK;
     }
@@ -68,6 +71,6 @@ AppOutputResult AppOutputState_SetPwm(AppOutputState *state, uint8_t percent)
     {
         return APP_OUTPUT_DENIED_18V;
     }
-    state->pwm_percent = percent;
+    state->pwm_target_percent = percent;
     return APP_OUTPUT_OK;
 }

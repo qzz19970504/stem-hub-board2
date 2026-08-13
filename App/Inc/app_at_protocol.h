@@ -21,6 +21,8 @@ typedef enum
     APP_AT_COMMAND_NONE = 0,
     APP_AT_COMMAND_SET_NMOS,
     APP_AT_COMMAND_SET_PWM,
+    APP_AT_COMMAND_SET_PWM_TIME,
+    APP_AT_COMMAND_SET_BREATH_TEST,
     APP_AT_COMMAND_SET_POWER,
     APP_AT_COMMAND_GET_STATUS,
     APP_AT_COMMAND_SET_BRIDGE,
@@ -44,6 +46,9 @@ typedef struct
 {
     uint8_t percent;
 } AppAtPwmCommand;
+
+typedef struct { uint16_t milliseconds; } AppAtPwmTimeCommand;
+typedef struct { bool enabled; } AppAtBreathCommand;
 
 typedef struct
 {
@@ -70,6 +75,8 @@ typedef struct
     {
         AppAtNmosCommand nmos;
         AppAtPwmCommand pwm;
+        AppAtPwmTimeCommand pwm_time;
+        AppAtBreathCommand breath;
         AppAtPowerCommand power;
         AppAtBridgeCommand bridge;
         AppAtUartPayloadCommand uart_payload;

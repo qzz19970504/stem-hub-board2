@@ -69,6 +69,21 @@ int main(void)
     assert(AppAtProtocol_ParseLine("AT+PWM=-1\r\n", &command) == APP_AT_PARSE_INVALID);
     assert(AppAtProtocol_ParseLine("AT+PWM=A\r\n", &command) == APP_AT_PARSE_INVALID);
 
+    command = parse_ok("AT+PWM_TIME=0\r\n");
+    assert(command.type == APP_AT_COMMAND_SET_PWM_TIME);
+    assert(command.data.pwm_time.milliseconds == 0U);
+    command = parse_ok("AT+PWM_TIME=10000\r\n");
+    assert(command.data.pwm_time.milliseconds == 10000U);
+    assert(AppAtProtocol_ParseLine("AT+PWM_TIME=10001\r\n", &command) == APP_AT_PARSE_RANGE);
+    assert(AppAtProtocol_ParseLine("AT+PWM_TIME=-1\r\n", &command) == APP_AT_PARSE_INVALID);
+
+    command = parse_ok("AT+BREATH_TEST=ON\r\n");
+    assert(command.type == APP_AT_COMMAND_SET_BREATH_TEST);
+    assert(command.data.breath.enabled);
+    command = parse_ok("AT+BREATH_TEST=OFF\r\n");
+    assert(!command.data.breath.enabled);
+    assert(AppAtProtocol_ParseLine("AT+BREATH_TEST=on\r\n", &command) == APP_AT_PARSE_INVALID);
+
     expect_bridge("AT+UART2=ON\r\n", APP_BRIDGE_TARGET_UART2, true);
     expect_bridge("AT+UART3=OFF\r\n", APP_BRIDGE_TARGET_UART3, false);
     expect_bridge("AT+UART2&3=ON\r\n", APP_BRIDGE_TARGET_UART23, true);
