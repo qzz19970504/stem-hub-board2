@@ -14,11 +14,14 @@ static void App_OutputWriteAllState(void)
     HAL_GPIO_WritePin(BUCK18V_CTRL_GPIO_Port, BUCK18V_CTRL_Pin,
                       app_output_state.power_18v_enabled ? GPIO_PIN_RESET : GPIO_PIN_SET);
     HAL_GPIO_WritePin(NMOS1_GPIO_Port, NMOS1_Pin,
-                      app_output_state.nmos_enabled[0] ? GPIO_PIN_RESET : GPIO_PIN_SET);
+                      App_OutputNmosEnabledToPinHigh(app_output_state.nmos_enabled[0])
+                          ? GPIO_PIN_SET : GPIO_PIN_RESET);
     HAL_GPIO_WritePin(NMOS2_GPIO_Port, NMOS2_Pin,
-                      app_output_state.nmos_enabled[1] ? GPIO_PIN_RESET : GPIO_PIN_SET);
+                      App_OutputNmosEnabledToPinHigh(app_output_state.nmos_enabled[1])
+                          ? GPIO_PIN_SET : GPIO_PIN_RESET);
     HAL_GPIO_WritePin(NMOS3_GPIO_Port, NMOS3_Pin,
-                      app_output_state.nmos_enabled[2] ? GPIO_PIN_RESET : GPIO_PIN_SET);
+                      App_OutputNmosEnabledToPinHigh(app_output_state.nmos_enabled[2])
+                          ? GPIO_PIN_SET : GPIO_PIN_RESET);
     __HAL_TIM_SET_COMPARE(&htim4,
                           TIM_CHANNEL_4,
                           App_OutputPwmPercentToCompare(app_output_state.pwm_percent,

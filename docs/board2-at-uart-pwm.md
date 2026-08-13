@@ -14,9 +14,9 @@
 
 | 命令 | 说明 |
 | --- | --- |
-| `AT+NMOS1=ON` / `OFF` | 控制 PB4；ON 输出低电平 |
-| `AT+NMOS2=ON` / `OFF` | 控制 PB15；ON 输出低电平 |
-| `AT+NMOS3=ON` / `OFF` | 控制 PB6；ON 输出低电平 |
+| `AT+NMOS1=ON` / `OFF` | 控制 PB4；ON 输出高电平 |
+| `AT+NMOS2=ON` / `OFF` | 控制 PB15；ON 输出高电平 |
+| `AT+NMOS3=ON` / `OFF` | 控制 PB6；ON 输出高电平 |
 | `AT+PWM=<0..100>` | 设置 PB9/TIM4_CH4 的整数百分比占空比 |
 | `AT+12V=ON` / `OFF` | 控制 PB12；低电平开启 12V Buck |
 | `AT+18V=ON` / `OFF` | 控制 PB3；低电平开启 18V Buck |
@@ -64,10 +64,10 @@ cmake --build --preset Release
 
 ## 实板验收清单
 
-1. 上电复位期间测量 PB4、PB15、PB6，确认三路均为高电平关闭状态。
+1. 上电复位期间测量 PB4、PB15、PB6，确认三路均为低电平关闭状态。
 2. 确认 FreeRTOS 启动后 PA8 保持高电平，LED2 常亮。
 3. 在 PB9 测量约 1 kHz PWM；依次发送 0%、25%、50%、100%，确认占空比对应。
-4. 分别发送三路 NMOS 的 ON/OFF 指令，确认 ON 为低电平、OFF 为高电平。
+4. 分别发送三路 NMOS 的 ON/OFF 指令，确认 ON 为高电平、OFF 为低电平。
 5. 单独启用 UART2、单独启用 UART3、同时启用两路，验证 UART1 非 AT 帧的目标选择。
 6. 从 UART2/UART3 注入包含 `00`、`0D`、`0A`、`FF` 的数据，确认 UART1 返回对应 HEX 事件。
 7. 让三路串口连续收发并触发一次线缆断连/重连，确认接收中断能够继续工作。

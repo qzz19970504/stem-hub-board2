@@ -165,9 +165,9 @@ FLASH: 22852 B / 64 KiB
 
 | 检查项 | 操作 | 预期结果 | 结果 |
 | --- | --- | --- | --- |
-| NMOS1 | 上电或复位，测量 PB4 | 高电平，NMOS1 关闭 | [ ] |
-| NMOS2 | 上电或复位，测量 PB15 | 高电平，NMOS2 关闭 | [ ] |
-| NMOS3 | 上电或复位，测量 PB6 | 高电平，NMOS3 关闭 | [ ] |
+| NMOS1 | 上电或复位，测量 PB4 | 低电平，NMOS1 关闭 | [ ] |
+| NMOS2 | 上电或复位，测量 PB15 | 低电平，NMOS2 关闭 | [ ] |
+| NMOS3 | 上电或复位，测量 PB6 | 低电平，NMOS3 关闭 | [ ] |
 | PWM | 上电后测量 PB9 | 默认占空比 0% | [ ] |
 | LED2 | 等待 FreeRTOS 启动，测量 PA8/观察 LED | PA8 高电平，LED2 常亮 | [ ] |
 | 透传目标 | 直接发送 `AT+UARTTX=AA\r\n` | UART1 返回 `+ERROR:UART_DISABLED\r\n` | [ ] |
@@ -182,7 +182,7 @@ FLASH: 22852 B / 64 KiB
 4. 18V 关闭时发送 `AT+PWM=50`，应返回 `+ERROR:18V_DISABLED`。
 5. 开启 18V 后可设置 PWM；关闭 18V 后状态中 PWM 自动变为 0。
 
-如果任一 NMOS 上电后为低电平，应立即断开负载电源并检查 GPIO 初始化、烧录镜像和硬件上下拉。
+如果任一 NMOS 上电后为高电平，应立即断开负载电源并检查 GPIO 初始化、烧录镜像和硬件上下拉。
 
 ## AT 协议测试
 
@@ -231,18 +231,18 @@ LF-only 用例确认无响应后，再发送单独的 `\r\n` 结束当前异常�
 
 ## NMOS 输出测试
 
-测试时使用限流电源；如果连接实际负载，先确认低电平导通符合硬件设计。
+测试时使用限流电源；如果连接实际负载，先确认高电平导通符合硬件设计。
 
 先发送 `AT+12V=ON\r\n` 并确认返回 `OK\r\n`。测试结束后发送 `AT+12V=OFF\r\n`。
 
 | 步骤 | UART1 输入 | 预期响应 | 引脚预期 | 结果 |
 | --- | --- | --- | --- | --- |
-| 1 | `AT+NMOS1=ON\r\n` | `OK\r\n` | PB4 低电平 | [ ] |
-| 2 | `AT+NMOS1=OFF\r\n` | `OK\r\n` | PB4 高电平 | [ ] |
-| 3 | `AT+NMOS2=ON\r\n` | `OK\r\n` | PB15 低电平 | [ ] |
-| 4 | `AT+NMOS2=OFF\r\n` | `OK\r\n` | PB15 高电平 | [ ] |
-| 5 | `AT+NMOS3=ON\r\n` | `OK\r\n` | PB6 低电平 | [ ] |
-| 6 | `AT+NMOS3=OFF\r\n` | `OK\r\n` | PB6 高电平 | [ ] |
+| 1 | `AT+NMOS1=ON\r\n` | `OK\r\n` | PB4 高电平 | [ ] |
+| 2 | `AT+NMOS1=OFF\r\n` | `OK\r\n` | PB4 低电平 | [ ] |
+| 3 | `AT+NMOS2=ON\r\n` | `OK\r\n` | PB15 高电平 | [ ] |
+| 4 | `AT+NMOS2=OFF\r\n` | `OK\r\n` | PB15 低电平 | [ ] |
+| 5 | `AT+NMOS3=ON\r\n` | `OK\r\n` | PB6 高电平 | [ ] |
+| 6 | `AT+NMOS3=OFF\r\n` | `OK\r\n` | PB6 低电平 | [ ] |
 
 - [ ] 测试结束后三路 NMOS 均已恢复 OFF。
 

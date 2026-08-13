@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "app_output_math.h"
@@ -6,6 +7,9 @@
 int main(void)
 {
     static const uint32_t auto_reload = 999U;
+
+    assert(!App_OutputNmosEnabledToPinHigh(false));
+    assert(App_OutputNmosEnabledToPinHigh(true));
 
     assert(App_OutputPwmPercentToCompare(0U, auto_reload) == 0U);
     assert(App_OutputPwmPercentToCompare(1U, auto_reload) == 10U);

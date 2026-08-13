@@ -1,6 +1,6 @@
 # stem-hub-board2
 
-基于 STM32F103C8、STM32 HAL 和 FreeRTOS 的板2固件。UART1 负责 AT 控制和主机通信，UART2、UART3 可按命令启用为透传目标；应用层同时提供三路低有效 NMOS 输出、一路约 1 kHz PWM 和运行状态 LED。
+基于 STM32F103C8、STM32 HAL 和 FreeRTOS 的板2固件。UART1 负责 AT 控制和主机通信，UART2、UART3 可按命令启用为透传目标；应用层同时提供三路高有效 NMOS 输出、一路约 1 kHz PWM 和运行状态 LED。
 
 ## 快速开始
 
@@ -76,9 +76,9 @@ cmake --build --preset Release
 | UART1 | PA9=TX、PA10=RX | 主控制串口 | 接收已启动 |
 | UART2 | PA2=TX、PA3=RX | 透传串口 | 透传关闭，接收已启动 |
 | UART3 | PB10=TX、PB11=RX | 透传串口 | 透传关闭，接收已启动 |
-| NMOS1 | PB4 | 低电平导通 | 高电平，关闭 |
-| NMOS2 | PB15 | 低电平导通 | 高电平，关闭 |
-| NMOS3 | PB6 | 低电平导通 | 高电平，关闭 |
+| NMOS1 | PB4 | 高电平导通 | 低电平，关闭 |
+| NMOS2 | PB15 | 高电平导通 | 低电平，关闭 |
+| NMOS3 | PB6 | 高电平导通 | 低电平，关闭 |
 | 18V Buck | PB3 | 低电平开启 | 高电平，关闭 |
 | 12V Buck | PB12 | 低电平开启 | 高电平，关闭 |
 | PWM_LED | PB9/TIM4_CH4 | 高电平有效 | 约 1 kHz，0% |
@@ -123,7 +123,7 @@ UART1 数据先进入 64 B 中断接收块，再由 `HAL_UARTEx_RxEventCallback(
 
 ### 输出控制
 
-- `AT+NMOSx=ON` 调用 `App_OutputSetNmos()` 输出低电平；`OFF` 输出高电平。
+- `AT+NMOSx=ON` 调用 `App_OutputSetNmos()` 输出高电平；`OFF` 输出低电平。
 - `AT+PWM=<百分比>` 调用纯换算函数，以 `(ARR + 1) × 百分比 / 100` 计算 CCR。当前 ARR=999，因此 1% 对应 10 个计数。
 - 所有 AT 响应和 UART2/3 回传事件最终通过 UART 发送互斥锁串行发送，避免多任务输出交叉。
 

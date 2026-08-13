@@ -8,7 +8,7 @@
 /** Put all switched outputs into their safe state and start PWM at 0%. */
 void App_OutputInit(void);
 
-/** Set one active-low NMOS output. */
+/** Set one active-high NMOS output. */
 AppOutputResult App_OutputSetNmos(uint8_t nmos_index, bool enabled);
 
 /** Set PWM_LED to an integer duty percent from 0 through 100. */
