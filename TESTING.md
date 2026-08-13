@@ -171,6 +171,16 @@ FLASH: 22852 B / 64 KiB
 | PWM | 上电后测量 PB9 | 默认占空比 0% | [ ] |
 | LED2 | 等待 FreeRTOS 启动，测量 PA8/观察 LED | PA8 高电平，LED2 常亮 | [ ] |
 | 透传目标 | 直接发送 `AT+UARTTX=AA\r\n` | UART1 返回 `+ERROR:UART_DISABLED\r\n` | [ ] |
+| 18V Buck | 上电后测量 PB3 | 高电平，18V 关闭 | [ ] |
+| 12V Buck | 上电后测量 PB12 | 高电平，12V 关闭 | [ ] |
+
+电源联锁快速验收：
+
+1. `AT+STATUS=?` 应显示两路电源 OFF、三路 NMOS OFF、PWM=0。
+2. 12V 关闭时发送 `AT+NMOS1=ON`，应返回 `+ERROR:12V_DISABLED`。
+3. 开启 12V 后 NMOS1 可开启；关闭 12V 后状态中 NMOS1 自动变为 OFF。
+4. 18V 关闭时发送 `AT+PWM=50`，应返回 `+ERROR:18V_DISABLED`。
+5. 开启 18V 后可设置 PWM；关闭 18V 后状态中 PWM 自动变为 0。
 
 如果任一 NMOS 上电后为低电平，应立即断开负载电源并检查 GPIO 初始化、烧录镜像和硬件上下拉。
 

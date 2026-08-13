@@ -56,6 +56,7 @@ cmake --build --preset Release
 
 - UART1 上严格大写、CRLF 结尾的 AT 命令解析。
 - NMOS1、NMOS2、NMOS3 开关控制。
+- PB3 控制 18V Buck、PB12 控制 12V Buck；两路上电默认关闭。
 - PB9/TIM4_CH4 的 0%～100% PWM 占空比控制。
 - UART2、UART3 单独或同时启用为透传目标。
 - UART1 非 AT CRLF 帧向已启用目标原样转发，包括帧内 `0x00`。
@@ -78,6 +79,8 @@ cmake --build --preset Release
 | NMOS1 | PB4 | 低电平导通 | 高电平，关闭 |
 | NMOS2 | PB15 | 低电平导通 | 高电平，关闭 |
 | NMOS3 | PB6 | 低电平导通 | 高电平，关闭 |
+| 18V Buck | PB3 | 低电平开启 | 高电平，关闭 |
+| 12V Buck | PB12 | 低电平开启 | 高电平，关闭 |
 | PWM_LED | PB9/TIM4_CH4 | 高电平有效 | 约 1 kHz，0% |
 | LED2 | PA8 | 高电平点亮 | `systemTask` 启动后常亮 |
 
@@ -223,6 +226,9 @@ stem-hub-board2/
 | `AT+NMOS2=ON` / `AT+NMOS2=OFF` | 控制 NMOS2 |
 | `AT+NMOS3=ON` / `AT+NMOS3=OFF` | 控制 NMOS3 |
 | `AT+PWM=0..100` | 设置整数百分比占空比 |
+| `AT+12V=ON` / `AT+12V=OFF` | 启停 12V Buck |
+| `AT+18V=ON` / `AT+18V=OFF` | 启停 18V Buck |
+| `AT+STATUS=?` | 查询两路电源、NMOS1/2/3 和 PWM 状态 |
 | `AT+UART2=ON` / `AT+UART2=OFF` | 启停 UART2 透传 |
 | `AT+UART3=ON` / `AT+UART3=OFF` | 启停 UART3 透传 |
 | `AT+UART2&3=ON` / `AT+UART2&3=OFF` | 同时启停 UART2、UART3 |
@@ -236,6 +242,10 @@ stem-hub-board2/
 - `+ERROR:UART_TX\r\n`
 - `+ERROR:LINE_TOO_LONG\r\n`
 - `+ERROR:RX_OVERFLOW\r\n`
+- `+ERROR:12V_DISABLED\r\n`
+- `+ERROR:18V_DISABLED\r\n`
+
+安全联锁：12V 关闭时 NMOS 不能开启，关闭 12V 会自动关闭三路 NMOS；18V 关闭时 PWM 只能设为 0%，关闭 18V 会自动清零 PWM。
 
 完整协议约束与响应含义见 [docs/board2-at-uart-pwm.md](docs/board2-at-uart-pwm.md)。
 
