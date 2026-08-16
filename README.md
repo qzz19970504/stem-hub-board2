@@ -1,6 +1,6 @@
 # stem-hub-board2
 
-基于 STM32F103C8、STM32 HAL 和 FreeRTOS 的板2固件。UART1 负责 AT 控制和主机通信，UART2、UART3 可按命令启用为透传目标；应用层同时提供三路低有效 NMOS 输出、一路约 1 kHz PWM 和运行状态 LED。
+基于 STM32F103C8、STM32 HAL 和 FreeRTOS 的板2固件。UART1 负责 AT 控制和主机通信，UART2、UART3 可按命令启用为透传目标；应用层同时提供三路高有效 NMOS 输出、一路 25 kHz PWM 和运行状态 LED。
 
 ## 快速开始
 
@@ -76,12 +76,12 @@ cmake --build --preset Release
 | UART1 | PA9=TX、PA10=RX | 主控制串口 | 接收已启动 |
 | UART2 | PA2=TX、PA3=RX | 透传串口 | 透传关闭，接收已启动 |
 | UART3 | PB10=TX、PB11=RX | 透传串口 | 透传关闭，接收已启动 |
-| NMOS1 | PB4 | 低电平导通 | 高电平，关闭 |
-| NMOS2 | PB15 | 低电平导通 | 高电平，关闭 |
-| NMOS3 | PB6 | 低电平导通 | 高电平，关闭 |
+| NMOS1 | PB4 | 高电平导通 | 低电平，关闭 |
+| NMOS2 | PB15 | 高电平导通 | 低电平，关闭 |
+| NMOS3 | PB6 | 高电平导通 | 低电平，关闭 |
 | 18V Buck | PB3 | 低电平开启 | 高电平，关闭 |
 | 12V Buck | PB12 | 低电平开启 | 高电平，关闭 |
-| PWM_LED | PB9/TIM4_CH4 | 高电平有效 | 约 1 kHz，0% |
+| PWM_LED | PB9/TIM4_CH4 | 高电平有效 | 25 kHz，0% |
 | LED2 | PA8 | 高电平点亮 | `systemTask` 启动后常亮 |
 
 NMOS 的安全初值同时写入 CubeMX GPIO 初始化代码和 `App_OutputInit()`。调度器启动前，应用会再次关闭三路 NMOS、把 PWM 比较值设为 0，并启动 TIM4_CH4 PWM。
@@ -123,8 +123,8 @@ UART1 数据先进入 64 B 中断接收块，再由 `HAL_UARTEx_RxEventCallback(
 
 ### 输出控制
 
-- `AT+NMOSx=ON` 调用 `App_OutputSetNmos()` 输出低电平；`OFF` 输出高电平。
-- `AT+PWM=<百分比>` 调用纯换算函数，以 `(ARR + 1) × 百分比 / 100` 计算 CCR。当前 ARR=999，因此 1% 对应 10 个计数。
+- `AT+NMOSx=ON` 调用 `App_OutputSetNmos()` 输出高电平；`OFF` 输出低电平。
+- `AT+PWM=<百分比>` 调用纯换算函数，以 `(ARR + 1) × 百分比 / 100` 计算 CCR。当前 ARR=2559，共有 2560 个计数级别。
 - 所有 AT 响应和 UART2/3 回传事件最终通过 UART 发送互斥锁串行发送，避免多任务输出交叉。
 
 ### 数据流
@@ -225,7 +225,9 @@ stem-hub-board2/
 | `AT+NMOS1=ON` / `AT+NMOS1=OFF` | 控制 NMOS1 |
 | `AT+NMOS2=ON` / `AT+NMOS2=OFF` | 控制 NMOS2 |
 | `AT+NMOS3=ON` / `AT+NMOS3=OFF` | 控制 NMOS3 |
-| `AT+PWM=0..100` | 设置整数百分比占空比 |
+| `AT+PWM=0..100` | 设置 Gamma 2.2 映射后的感知亮度目标 |
+| `AT+PWM_TIME=0..10000` | 设置渐变时间（ms），默认 500，掉电保存 |
+| `AT+BREATH_TEST=ON|OFF` | 开启或关闭呼吸灯演示 |
 | `AT+12V=ON` / `AT+12V=OFF` | 启停 12V Buck |
 | `AT+18V=ON` / `AT+18V=OFF` | 启停 18V Buck |
 | `AT+STATUS=?` | 查询两路电源、NMOS1/2/3 和 PWM 状态 |
@@ -244,8 +246,12 @@ stem-hub-board2/
 - `+ERROR:RX_OVERFLOW\r\n`
 - `+ERROR:12V_DISABLED\r\n`
 - `+ERROR:18V_DISABLED\r\n`
+- `+ERROR:BREATH_ACTIVE\r\n`
+- `+ERROR:STORAGE\r\n`
 
 安全联锁：12V 关闭时 NMOS 不能开启，关闭 12V 会自动关闭三路 NMOS；18V 关闭时 PWM 只能设为 0%，关闭 18V 会自动清零 PWM。
+
+PWM 每 10 ms 非阻塞推进，状态中的 `PWM` 是当前感知亮度，`PWM_TARGET` 是目标。呼吸演示期间普通 PWM 命令无效，但关闭 18V 始终立即停止演示并熄灯。
 
 完整协议约束与响应含义见 [docs/board2-at-uart-pwm.md](docs/board2-at-uart-pwm.md)。
 
@@ -258,7 +264,7 @@ stem-hub-board2/
 | UART 环形缓冲 | 每路 256 B | `App/Inc/app_config.h` |
 | HEX 发送/事件载荷 | 最多 32 B | `App/Inc/app_config.h` |
 | UART 任务态发送超时 | 100 ms | `App/Inc/app_config.h` |
-| TIM4 PWM | PSC=63、ARR=999 | `Core/Src/tim.c`、`.ioc` |
+| TIM4 PWM | PSC=0、ARR=2559，频率 25 kHz | `Core/Src/tim.c`、`.ioc` |
 | USART IRQ 抢占优先级 | 5 | `Core/Src/usart.c`、`.ioc` |
 | FreeRTOS heap | 6144 B | `Core/Inc/FreeRTOSConfig.h`、`.ioc` |
 

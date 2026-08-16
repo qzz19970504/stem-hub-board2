@@ -49,12 +49,15 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, BUCK18V_CTRL_Pin|BUCK12V_CTRL_Pin|NMOS2_Pin|NMOS1_Pin|NMOS3_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOB, BUCK18V_CTRL_Pin|BUCK12V_CTRL_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, NMOS2_Pin|NMOS1_Pin|NMOS3_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : Buck controls and active-low NMOS outputs */
+  /*Configure GPIO pins : Buck controls and active-high NMOS outputs */
   GPIO_InitStruct.Pin = BUCK18V_CTRL_Pin|BUCK12V_CTRL_Pin|NMOS2_Pin|NMOS1_Pin|NMOS3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;

@@ -139,6 +139,24 @@ static AppAtParseStatus AppAtProtocol_ParsePwm(const char *value, uint8_t *perce
     return APP_AT_PARSE_OK;
 }
 
+static AppAtParseStatus AppAtProtocol_ParseMilliseconds(const char *value,
+                                                         uint16_t *milliseconds)
+{
+    uint32_t parsed = 0U;
+    size_t index;
+    const size_t length = (value == NULL) ? 0U : strlen(value);
+    if ((milliseconds == NULL) || (length == 0U)) return APP_AT_PARSE_INVALID;
+    for (index = 0U; index < length; ++index)
+    {
+        if ((value[index] < '0') || (value[index] > '9')) return APP_AT_PARSE_INVALID;
+        if (parsed <= APP_PWM_FADE_MAX_MS)
+            parsed = parsed * 10U + (uint32_t)(value[index] - '0');
+    }
+    if (parsed > APP_PWM_FADE_MAX_MS) return APP_AT_PARSE_RANGE;
+    *milliseconds = (uint16_t)parsed;
+    return APP_AT_PARSE_OK;
+}
+
 static bool AppAtProtocol_DecodeHexNibble(char character, uint8_t *nibble)
 {
     if ((nibble == NULL) || (character < '0'))
@@ -331,6 +349,21 @@ AppAtParseStatus AppAtProtocol_ParseFrame(const uint8_t *frame,
     if (strcmp(command_body, "AT+STATUS=?") == 0)
     {
         out_command->type = APP_AT_COMMAND_GET_STATUS;
+        return APP_AT_PARSE_OK;
+    }
+
+    if (AppAtProtocol_MatchAssignment("AT+PWM_TIME=", command_body, &value))
+    {
+        parse_status = AppAtProtocol_ParseMilliseconds(value, &out_command->data.pwm_time.milliseconds);
+        if (parse_status == APP_AT_PARSE_OK) out_command->type = APP_AT_COMMAND_SET_PWM_TIME;
+        return parse_status;
+    }
+
+    if (AppAtProtocol_MatchAssignment("AT+BREATH_TEST=", command_body, &value))
+    {
+        if (!AppAtProtocol_ParseOnOff(value, &out_command->data.breath.enabled))
+            return APP_AT_PARSE_INVALID;
+        out_command->type = APP_AT_COMMAND_SET_BREATH_TEST;
         return APP_AT_PARSE_OK;
     }
 

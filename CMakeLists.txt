@@ -49,6 +49,9 @@ set(APP_SOURCES
     App/Src/app_output.c
     App/Src/app_output_math.c
     App/Src/app_output_state.c
+    App/Src/app_pwm_fade.c
+    App/Src/app_settings_record.c
+    App/Src/app_settings_storage.c
     App/Src/app_ring_buffer.c
     App/Src/app_runtime.c
     App/Src/app_tasks.c

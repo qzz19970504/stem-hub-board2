@@ -20,9 +20,11 @@ int main(void)
 
     assert(AppOutputState_SetPower(&state, APP_POWER_RAIL_18V, true) == APP_OUTPUT_OK);
     assert(AppOutputState_SetPwm(&state, 75U) == APP_OUTPUT_OK);
-    assert(state.pwm_percent == 75U);
+    assert(state.pwm_percent == 0U);
+    assert(state.pwm_target_percent == 75U);
     assert(AppOutputState_SetPower(&state, APP_POWER_RAIL_18V, false) == APP_OUTPUT_OK);
     assert(state.pwm_percent == 0U);
+    assert(state.pwm_target_percent == 0U);
     assert(AppOutputState_SetPwm(&state, 0U) == APP_OUTPUT_OK);
     assert(AppOutputState_SetPwm(&state, 101U) == APP_OUTPUT_INVALID);
     return 0;

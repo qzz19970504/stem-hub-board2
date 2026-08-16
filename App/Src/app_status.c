@@ -14,13 +14,16 @@ bool App_StatusEncode(const AppOutputState *state,
     }
     written = snprintf(output,
                        output_capacity,
-                       "+STATUS:12V=%s,18V=%s,NMOS1=%s,NMOS2=%s,NMOS3=%s,PWM=%u\r\nOK\r\n",
+                       "+STATUS:12V=%s,18V=%s,NMOS1=%s,NMOS2=%s,NMOS3=%s,PWM=%u,PWM_TARGET=%u,PWM_TIME=%u,BREATH=%s\r\nOK\r\n",
                        state->power_12v_enabled ? "ON" : "OFF",
                        state->power_18v_enabled ? "ON" : "OFF",
                        state->nmos_enabled[0] ? "ON" : "OFF",
                        state->nmos_enabled[1] ? "ON" : "OFF",
                        state->nmos_enabled[2] ? "ON" : "OFF",
-                       (unsigned int)state->pwm_percent);
+                       (unsigned int)state->pwm_percent,
+                       (unsigned int)state->pwm_target_percent,
+                       (unsigned int)state->pwm_fade_duration_ms,
+                       state->breath_test_enabled ? "ON" : "OFF");
     if ((written < 0) || ((size_t)written >= output_capacity))
     {
         return false;

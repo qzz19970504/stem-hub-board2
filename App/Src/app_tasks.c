@@ -15,8 +15,6 @@
 #include "main.h"
 #include "usart.h"
 
-#define APP_SYSTEM_HEARTBEAT_DELAY_MS 1000U
-
 static void App_AtSendParseError(AppAtParseStatus parse_status)
 {
     const char *error = (parse_status == APP_AT_PARSE_RANGE)
@@ -91,6 +89,12 @@ static void App_AtHandleCommand(const AppAtCommand *command)
     case APP_AT_COMMAND_SET_PWM:
         output_result = App_OutputSetPwmPercent(command->data.pwm.percent);
         break;
+    case APP_AT_COMMAND_SET_PWM_TIME:
+        output_result = App_OutputSetFadeDuration(command->data.pwm_time.milliseconds);
+        break;
+    case APP_AT_COMMAND_SET_BREATH_TEST:
+        output_result = App_OutputSetBreathTest(command->data.breath.enabled);
+        break;
     case APP_AT_COMMAND_SET_POWER:
         output_result = App_OutputSetPower(command->data.power.rail,
                                            command->data.power.enabled);
@@ -99,7 +103,9 @@ static void App_AtHandleCommand(const AppAtCommand *command)
     {
         char status[APP_AT_PROTOCOL_MAX_LINE_LENGTH];
         size_t status_length = 0U;
-        if (App_StatusEncode(App_OutputGetState(), status, sizeof(status), &status_length))
+        AppOutputState state;
+        App_OutputGetStateSnapshot(&state);
+        if (App_StatusEncode(&state, status, sizeof(status), &status_length))
         {
             (void)App_RuntimeSendBytes(&huart1,
                                        (const uint8_t *)status,
@@ -131,6 +137,16 @@ static void App_AtHandleCommand(const AppAtCommand *command)
     if (output_result == APP_OUTPUT_DENIED_18V)
     {
         (void)App_RuntimeSendText(&huart1, "+ERROR:18V_DISABLED\r\n");
+        return;
+    }
+    if (output_result == APP_OUTPUT_DENIED_BREATH)
+    {
+        (void)App_RuntimeSendText(&huart1, "+ERROR:BREATH_ACTIVE\r\n");
+        return;
+    }
+    if (output_result == APP_OUTPUT_STORAGE_ERROR)
+    {
+        (void)App_RuntimeSendText(&huart1, "+ERROR:STORAGE\r\n");
         return;
     }
     if (output_result == APP_OUTPUT_OK)
@@ -172,7 +188,8 @@ void App_SystemTask(void *argument)
 
     for (;;)
     {
-        osDelay(APP_SYSTEM_HEARTBEAT_DELAY_MS);
+        App_OutputTick(APP_PWM_FADE_TICK_MS);
+        osDelay(APP_PWM_FADE_TICK_MS);
     }
 }
 
