@@ -271,10 +271,10 @@ void App_SystemTask(void *argument)
 
 void App_AtTask(void *argument)
 {
+    static AppTransparentMode transparent_mode;
+    static uint8_t chunk[APP_UART_RX_CHUNK_SIZE];
     char line_buffer[APP_AT_PROTOCOL_MAX_LINE_LENGTH] = {0};
     AppLineReader line_reader = {0};
-    AppTransparentMode transparent_mode;
-    uint8_t chunk[APP_UART_RX_CHUNK_SIZE];
     size_t chunk_length;
     bool silence_before;
     bool silence_after;
