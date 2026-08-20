@@ -162,6 +162,12 @@ bool App_RuntimePopUart1Chunk(uint8_t *bytes,
         return false;
     }
 
+    if (AppRingBuffer_HasOverflowed(&runtime->ring)
+        || AppUartChunkQueue_HasOverflowed(&runtime->chunk_queue))
+    {
+        return false;
+    }
+
     if (!AppUartChunkQueue_Pop(&runtime->chunk_queue, &chunk))
     {
         return false;
