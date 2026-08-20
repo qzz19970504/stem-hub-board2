@@ -32,14 +32,14 @@ The escape detector recognizes `+++` only when both guard conditions are met:
 - at least 1 ms of UART1 receive silence before the first `+`;
 - at least 1 ms of UART1 receive silence after the third `+`.
 
-The existing `HAL_UARTEx_ReceiveToIdle_IT` path is retained. At 9600 baud, one 8N1 character occupies about 1.04 ms, so a UART IDLE boundary is a conservative hardware-backed proof of the requested 1 ms silence. The runtime records UART1 receive chunks as idle-delimited units and notifies the AT task on both incoming data and the escape confirmation deadline.
+The existing `HAL_UARTEx_ReceiveToIdle_IT` path is retained. At 9600 baud, one 8N1 character occupies about 1.04 ms, so a UART IDLE boundary is a conservative hardware-backed proof of the requested 1 ms silence. The runtime records whether every UART1 receive chunk begins after and ends at an IDLE boundary.
 
 In transparent mode:
 
-- A chunk other than exactly three plus bytes is forwarded immediately.
-- An idle-delimited chunk containing exactly `+++` becomes a pending escape candidate instead of being forwarded.
-- If no UART1 byte arrives during the following 1 ms confirmation interval, the escape succeeds.
-- If another byte arrives before confirmation, the pending `+++` is forwarded first, followed by the new bytes in their original order.
+- Bytes that cannot belong to a guarded escape candidate are forwarded immediately.
+- A leading `+` after an IDLE boundary becomes a pending escape candidate instead of being forwarded immediately.
+- The escape succeeds when the candidate reaches exactly three plus bytes and the UART reports the following IDLE boundary. That callback occurs only after about 1.04 ms of line silence, so no additional software delay is added.
+- If another byte arrives before the post-guard IDLE boundary, the pending plus bytes are forwarded first, followed by the new bytes in their original order.
 - `abc+++def`, `++++`, and any `+++` without both guard intervals remain ordinary payload and must not lose, reorder, or duplicate bytes.
 
 This deliberately uses the UART idle boundary rather than rewriting reception as per-byte interrupts. It preserves the current interrupt/ring-buffer/FreeRTOS architecture and errs on the safe side: marginal timing does not cause an unintended escape.
