@@ -250,34 +250,35 @@ static bool AppAtProtocol_MatchNmos(const char *command_body,
     return false;
 }
 
-static bool AppAtProtocol_MatchBridge(const char *command_body,
-                                      AppAtCommand *out_command)
+static bool AppAtProtocol_MatchTransparent(const char *command_body,
+                                           AppAtCommand *out_command)
 {
-    static const char *const prefixes[] = {
-        "AT+UART2=",
-        "AT+UART3=",
-        "AT+UART2&3=",
+    static const char *const values[] = {
+        "1",
+        "2",
+        "1&2",
     };
     static const AppBridgeTarget targets[] = {
         APP_BRIDGE_TARGET_UART2,
         APP_BRIDGE_TARGET_UART3,
         APP_BRIDGE_TARGET_UART23,
     };
-    size_t prefix_index;
+    const char *value = NULL;
+    size_t value_index;
 
-    for (prefix_index = 0U;
-         prefix_index < (sizeof(prefixes) / sizeof(prefixes[0]));
-         ++prefix_index)
+    if (!AppAtProtocol_MatchAssignment("AT+TRANS=", command_body, &value))
     {
-        const char *value = NULL;
-        bool enabled = false;
+        return false;
+    }
 
-        if (AppAtProtocol_MatchAssignment(prefixes[prefix_index], command_body, &value)
-            && AppAtProtocol_ParseOnOff(value, &enabled))
+    for (value_index = 0U;
+         value_index < (sizeof(values) / sizeof(values[0]));
+         ++value_index)
+    {
+        if (strcmp(value, values[value_index]) == 0)
         {
-            out_command->type = APP_AT_COMMAND_SET_BRIDGE;
-            out_command->data.bridge.target = targets[prefix_index];
-            out_command->data.bridge.enabled = enabled;
+            out_command->type = APP_AT_COMMAND_START_TRANSPARENT;
+            out_command->data.transparent.target = targets[value_index];
             return true;
         }
     }
@@ -341,7 +342,7 @@ AppAtParseStatus AppAtProtocol_ParseFrame(const uint8_t *frame,
 
     if (AppAtProtocol_MatchNmos(command_body, out_command)
         || AppAtProtocol_MatchPower(command_body, out_command)
-        || AppAtProtocol_MatchBridge(command_body, out_command))
+        || AppAtProtocol_MatchTransparent(command_body, out_command))
     {
         return APP_AT_PARSE_OK;
     }
