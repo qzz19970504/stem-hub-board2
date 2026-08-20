@@ -25,7 +25,7 @@ typedef enum
     APP_AT_COMMAND_SET_BREATH_TEST,
     APP_AT_COMMAND_SET_POWER,
     APP_AT_COMMAND_GET_STATUS,
-    APP_AT_COMMAND_SET_BRIDGE,
+    APP_AT_COMMAND_START_TRANSPARENT,
     APP_AT_COMMAND_SEND_UART
 } AppAtCommandType;
 
@@ -59,8 +59,7 @@ typedef struct
 typedef struct
 {
     AppBridgeTarget target;
-    bool enabled;
-} AppAtBridgeCommand;
+} AppAtTransparentCommand;
 
 typedef struct
 {
@@ -78,7 +77,7 @@ typedef struct
         AppAtPwmTimeCommand pwm_time;
         AppAtBreathCommand breath;
         AppAtPowerCommand power;
-        AppAtBridgeCommand bridge;
+        AppAtTransparentCommand transparent;
         AppAtUartPayloadCommand uart_payload;
     } data;
 } AppAtCommand;

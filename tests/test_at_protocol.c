@@ -23,15 +23,13 @@ static void expect_nmos(const char *line, uint8_t expected_index, bool expected_
     assert(command.data.nmos.enabled == expected_enabled);
 }
 
-static void expect_bridge(const char *line,
-                          AppBridgeTarget expected_target,
-                          bool expected_enabled)
+static void expect_transparent(const char *line,
+                               AppBridgeTarget expected_target)
 {
     AppAtCommand command = parse_ok(line);
 
-    assert(command.type == APP_AT_COMMAND_SET_BRIDGE);
-    assert(command.data.bridge.target == expected_target);
-    assert(command.data.bridge.enabled == expected_enabled);
+    assert(command.type == APP_AT_COMMAND_START_TRANSPARENT);
+    assert(command.data.transparent.target == expected_target);
 }
 
 static void expect_power(const char *line, AppPowerRail rail, bool enabled)
@@ -84,9 +82,17 @@ int main(void)
     assert(!command.data.breath.enabled);
     assert(AppAtProtocol_ParseLine("AT+BREATH_TEST=on\r\n", &command) == APP_AT_PARSE_INVALID);
 
-    expect_bridge("AT+UART2=ON\r\n", APP_BRIDGE_TARGET_UART2, true);
-    expect_bridge("AT+UART3=OFF\r\n", APP_BRIDGE_TARGET_UART3, false);
-    expect_bridge("AT+UART2&3=ON\r\n", APP_BRIDGE_TARGET_UART23, true);
+    expect_transparent("AT+TRANS=1\r\n", APP_BRIDGE_TARGET_UART2);
+    expect_transparent("AT+TRANS=2\r\n", APP_BRIDGE_TARGET_UART3);
+    expect_transparent("AT+TRANS=1&2\r\n", APP_BRIDGE_TARGET_UART23);
+    assert(AppAtProtocol_ParseLine("AT+TRANS=\r\n", &command) == APP_AT_PARSE_INVALID);
+    assert(AppAtProtocol_ParseLine("AT+TRANS=3\r\n", &command) == APP_AT_PARSE_INVALID);
+    assert(AppAtProtocol_ParseLine("AT+UART2=ON\r\n", &command) == APP_AT_PARSE_INVALID);
+    assert(AppAtProtocol_ParseLine("AT+UART2=OFF\r\n", &command) == APP_AT_PARSE_INVALID);
+    assert(AppAtProtocol_ParseLine("AT+UART3=ON\r\n", &command) == APP_AT_PARSE_INVALID);
+    assert(AppAtProtocol_ParseLine("AT+UART3=OFF\r\n", &command) == APP_AT_PARSE_INVALID);
+    assert(AppAtProtocol_ParseLine("AT+UART2&3=ON\r\n", &command) == APP_AT_PARSE_INVALID);
+    assert(AppAtProtocol_ParseLine("AT+UART2&3=OFF\r\n", &command) == APP_AT_PARSE_INVALID);
     expect_power("AT+12V=ON\r\n", APP_POWER_RAIL_12V, true);
     expect_power("AT+12V=OFF\r\n", APP_POWER_RAIL_12V, false);
     expect_power("AT+18V=ON\r\n", APP_POWER_RAIL_18V, true);

@@ -78,7 +78,13 @@ PASS test_at_protocol
 PASS test_line_reader
 PASS test_ring_buffer
 PASS test_output_math
+PASS test_pwm_fade
+PASS test_settings_record
 PASS test_uart_tunnel
+PASS test_transparent_mode
+PASS test_uart_chunk_queue
+PASS test_output_state
+PASS test_status
 ```
 
 覆盖范围：
@@ -89,6 +95,8 @@ PASS test_uart_tunnel
 - CRLF 行读取、嵌入 NUL、超长行丢弃与恢复。
 - 环形缓冲回绕、满缓冲、溢出恢复和顺序保持。
 - UART2/3 HEX 事件编码。
+- `AT+TRANS` 映射、旧命令拒绝、AT/透明模式互斥和 `+++` 无损候选回放。
+- UART1 IDLE 分段元数据队列的顺序、回绕、满队列和溢出复位。
 
 ## 固件构建验证
 
@@ -202,12 +210,11 @@ FLASH: 22852 B / 64 KiB
 | `AT+NMOS3=OFF\r\n` | `OK\r\n` | [ ] |
 | `AT+PWM=0\r\n` | `OK\r\n` | [ ] |
 | `AT+PWM=100\r\n` | `OK\r\n` | [ ] |
-| `AT+UART2=ON\r\n` | `OK\r\n` | [ ] |
-| `AT+UART2=OFF\r\n` | `OK\r\n` | [ ] |
-| `AT+UART3=ON\r\n` | `OK\r\n` | [ ] |
-| `AT+UART3=OFF\r\n` | `OK\r\n` | [ ] |
-| `AT+UART2&3=ON\r\n` | `OK\r\n` | [ ] |
-| `AT+UART2&3=OFF\r\n` | `OK\r\n` | [ ] |
+| `AT+TRANS=1\r\n` | `OK\r\n`，随后进入 UART2 透明模式 | [ ] |
+| `AT+TRANS=2\r\n` | `OK\r\n`，随后进入 UART3 透明模式 | [ ] |
+| `AT+TRANS=1&2\r\n` | `OK\r\n`，随后进入双目标透明模式 | [ ] |
+
+三条 `AT+TRANS` 不可连续执行：每验证一条后先按“UART 透传测试”中的受保护 `+++` 步骤退出，再验证下一条。
 
 ### 格式和范围错误
 
@@ -220,6 +227,8 @@ FLASH: 22852 B / 64 KiB
 | `AT+PWM=-1\r\n` | `+ERROR:PARSE\r\n` | [ ] |
 | `AT+PWM=A\r\n` | `+ERROR:PARSE\r\n` | [ ] |
 | `AT+PWM=101\r\n` | `+ERROR:RANGE\r\n` | [ ] |
+| `AT+TRANS=\r\n` / `AT+TRANS=3\r\n` | `+ERROR:PARSE\r\n` | [ ] |
+| 任一旧 `AT+UART2/UART3/UART2&3=ON/OFF` 命令 | `+ERROR:PARSE\r\n` | [ ] |
 | `AT+UARTTX=\r\n` | `+ERROR:PARSE\r\n` | [ ] |
 | `AT+UARTTX=0\r\n` | `+ERROR:PARSE\r\n` | [ ] |
 | `AT+UARTTX=00ff\r\n` | `+ERROR:PARSE\r\n` | [ ] |
@@ -274,107 +283,62 @@ LF-only 用例确认无响应后，再发送单独的 `\r\n` 结束当前异常�
 
 ## UART 透传测试
 
-### UART1 到 UART2
+每个用例开始前先复位 MCU，确认 UART1 处于 AT 模式。发送有效 `AT+TRANS` 后，普通 AT 命令均失效；完成该用例必须用有效保护时间的 `+++` 返回 AT 模式。
 
-1. 从 UART1 发送 `AT+UART2=ON\r\n`，预期 `OK\r\n`。
-2. 保持 UART3 关闭。
-3. 从 UART1 发送非 AT 帧 `HELLO2\r\n`。
-4. UART2 应收到完全相同的字节：
+### 三种目标映射
 
-```text
-48 45 4C 4C 4F 32 0D 0A
-```
+1. 发送 `AT+TRANS=1\r\n`，预期 UART1 返回 `OK\r\n`；发送 `HELLO2\r\n`，只有 UART2 收到完全相同的字节。
+2. 前后各等待至少 2 ms，单次写入 `+++`，再等待至少 2 ms；预期 UART1 返回 `OK\r\n`。
+3. 发送 `AT+TRANS=2\r\n` 并发送 `HELLO3\r\n`；只有 UART3 收到完全相同的字节，然后用受保护的 `+++` 退出。
+4. 发送 `AT+TRANS=1&2\r\n` 并发送 `BOTH\r\n`；UART2、UART3 均收到完全相同的字节。
 
-- [ ] UART2 收到原始帧。
-- [ ] UART3 没有收到该帧。
+- [ ] `TRANS=1` 只选择 UART2。
+- [ ] `TRANS=2` 只选择 UART3。
+- [ ] `TRANS=1&2` 同时选择 UART2、UART3。
 
-### UART1 到 UART3
+### 透明模式禁用 AT Parser
 
-1. 发送 `AT+UART2=OFF\r\n` 和 `AT+UART3=ON\r\n`，每条均应返回 `OK\r\n`。
-2. 从 UART1 发送 `HELLO3\r\n`。
-3. UART3 应收到：
+1. 进入 `AT+TRANS=1`。
+2. 发送 `AT+STATUS=?\r\n`。
+3. UART1 不得返回 `+STATUS`；UART2 应收到 `41 54 2B 53 54 41 54 55 53 3D 3F 0D 0A`。
+4. 发送 `AT+PWM=100\r\n`，UART1 不得返回 AT 成功或错误响应，UART2 应收到原始字节。
 
-```text
-48 45 4C 4C 4F 33 0D 0A
-```
+- [ ] 透明模式下其他 AT 指令只作为 payload，不执行且不被截断。
 
-- [ ] UART3 收到原始帧。
-- [ ] UART2 没有收到该帧。
+### 二进制和 CRLF 原样传输
 
-### UART1 同时到 UART2、UART3
+在双目标透明模式下单次发送 `00 FF 10 0D 0A`。UART2、UART3 均应收到五个完全相同的字节；CRLF 与 NUL 不触发 AT 拼帧。
 
-1. 从 UART1 发送 `AT+UART2&3=ON\r\n`，预期 `OK\r\n`。
-2. 发送 `BOTH\r\n`。
-3. UART2、UART3 均应收到：
+- [ ] 双目标二进制数据、NUL 和 CRLF 均保持原样。
 
-```text
-42 4F 54 48 0D 0A
-```
+### `+++` 保护时间与无损回放
 
-- [ ] UART2、UART3 均收到相同帧。
+以下失败用例每次均从 `AT+TRANS=1` 开始，并观察 UART2：
 
-### `AT+UARTTX` 二进制发送
+1. 单次写入 `abc+++def`：UART2 原样收到，设备仍处于透明模式。
+2. 单次写入 `++++`：UART2 原样收到四个加号，设备仍处于透明模式。
+3. 单次写入 `X+++`：`+++` 前没有静默，UART2 原样收到全部四字节。
+4. 单次写入 `+++X`：`+++` 后没有静默，UART2 原样收到全部四字节。
+5. 在不足 1 ms 的间隔内把 `+++` 与相邻 payload 连续写入：候选和 payload 的顺序、长度均不得改变。
 
-保持 UART2、UART3 均启用：
+有效退出用例：先停止 UART1 发送至少 2 ms，单次写入 `+++`，再停止发送至少 2 ms。三个加号不得出现在 UART2，UART1 应返回 `OK\r\n`。随后发送 `AT+STATUS=?\r\n`，应恢复正常状态响应。
 
-```text
-AT+UARTTX=00FF100D0A\r\n
-```
+- [ ] 所有失败候选都完整回放，没有丢失、重复或乱序。
+- [ ] 满足前后静默的 `+++` 被消耗并退出。
+- [ ] 退出后 AT 命令恢复。
 
-预期：
+### UART2、UART3 回传与退出清理
 
-- UART1 返回 `OK\r\n`。
-- UART2、UART3 均收到五个字节 `00 FF 10 0D 0A`。
+1. 进入双目标透明模式。
+2. 从 UART2 发送 `00 0D 0A FF`，UART1 应收到 `+UART2RX:000D0AFF\r\n`。
+3. 从 UART3 发送 `12 34 AB CD`，UART1 应收到 `+UART3RX:1234ABCD\r\n`。
+4. 持续向 UART2 注入数据，再用受保护的 `+++` 退出；收到退出 `OK\r\n` 后停止注入。
 
-- [ ] 双目标二进制发送正确。
+连续输入超过 32 B 时允许产生多个 `+UARTxRX` 事件，但事件中的字节顺序必须与输入一致，每个事件最多携带 32 B。
 
-然后发送 `AT+UART2&3=OFF\r\n`，再发送：
-
-```text
-AT+UARTTX=AA\r\n
-```
-
-预期 UART1 返回：
-
-```text
-+ERROR:UART_DISABLED\r\n
-```
-
-- [ ] 未启用目标时没有下行数据。
-
-### UART2、UART3 到 UART1
-
-1. 启用双目标：`AT+UART2&3=ON\r\n`。
-2. 从 UART2 以 HEX 方式发送 `00 0D 0A FF`。
-3. UART1 应收到：
-
-```text
-+UART2RX:000D0AFF\r\n
-```
-
-4. 从 UART3 以 HEX 方式发送 `12 34 AB CD`。
-5. UART1 应收到：
-
-```text
-+UART3RX:1234ABCD\r\n
-```
-
-- [ ] UART2 上行事件的端口号、HEX 和 CRLF 正确。
-- [ ] UART3 上行事件的端口号、HEX 和 CRLF 正确。
-
-单次 HAL 接收事件和任务调度可能影响分块边界。连续输入超过 32 B 时允许产生多个 `+UARTxRX` 事件，但事件中的字节顺序必须与输入一致，每个事件最多携带 32 B。
-
-### 关闭时清队列
-
-1. 启用 UART2。
-2. 从 UART2 连续注入数据，同时从 UART1 发送 `AT+UART2=OFF\r\n`。
-3. 收到 OFF 的 `OK\r\n` 后停止注入。
-
-通过标准：
-
-- [ ] OFF 返回后不再出现关闭前遗留数据对应的 `+UART2RX` 事件。
-- [ ] UART2 后续数据在再次启用前被静默清理。
-- [ ] 再次发送 `AT+UART2=ON\r\n` 后，新接收数据可正常回传。
+- [ ] UART2/UART3 回传事件的端口号、HEX 和 CRLF 正确。
+- [ ] 退出确认后不再回放退出前积压的 UART2/UART3 数据。
+- [ ] 重新发送 `AT+TRANS=1` 后，新接收数据可正常回传。
 
 ## 异常与恢复测试
 

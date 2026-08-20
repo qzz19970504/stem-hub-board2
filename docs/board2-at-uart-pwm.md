@@ -5,7 +5,9 @@
 - UART1、UART2、UART3 均为 9600、8N1、无硬件流控。
 - AT 命令必须全大写并以 `\r\n` 结束，不允许空格或制表符。
 - 合法命令成功执行后返回 `OK\r\n`。
-- 非 AT 的 UART1 CRLF 帧原样发送到当前已启用的 UART2、UART3；没有启用目标时静默丢弃。
+- AT 模式只解析 CRLF 命令，不进行普通数据转发。
+- `AT+TRANS` 成功后进入透明模式；UART1 普通字节绕过 AT 解析并原样发送到选定目标。
+- 前后各静默至少 1 ms 的 `+++` 退出透明模式并返回 `OK\r\n`；保护时间不成立时候选字节必须完整补发。
 - UART2、UART3 收到的数据以大写十六进制事件返回 UART1，单个事件最多携带 32 字节：
   - `+UART2RX:<HEX>\r\n`
   - `+UART3RX:<HEX>\r\n`
@@ -23,12 +25,24 @@
 | `AT+12V=ON` / `OFF` | 控制 PB12；低电平开启 12V Buck |
 | `AT+18V=ON` / `OFF` | 控制 PB3；低电平开启 18V Buck |
 | `AT+STATUS=?` | 查询 12V、18V、NMOS1/2/3 和 PWM 当前软件状态 |
-| `AT+UART2=ON` / `OFF` | 启用或关闭 UART2 透传 |
-| `AT+UART3=ON` / `OFF` | 启用或关闭 UART3 透传 |
-| `AT+UART2&3=ON` / `OFF` | 同时启用或关闭 UART2、UART3 |
-| `AT+UARTTX=<HEX>` | 向当前已启用目标发送 1～32 字节二进制数据 |
+| `AT+TRANS=1` | 返回 OK 后进入 UART1→UART2 透明模式 |
+| `AT+TRANS=2` | 返回 OK 后进入 UART1→UART3 透明模式 |
+| `AT+TRANS=1&2` | 返回 OK 后进入 UART1→UART2、UART3 双目标透明模式 |
+| `AT+UARTTX=<HEX>` | 兼容保留；AT 模式无活动目标时返回 UART_DISABLED |
 
 `AT+UARTTX` 只接受大写、偶数位十六进制字符。例如 `AT+UARTTX=00FF10\r\n` 发送三个字节 `00 FF 10`。
+
+`1`、`2` 表示两条下游通道：通道 1 对应 MCU UART2，通道 2 对应 MCU UART3。透明模式下 `AT+PWM=100\r\n` 等其他 AT 字符串只是普通 payload，不会执行。旧的 `AT+UART2/UART3/UART2&3=ON/OFF` 命令不再受支持。
+
+### 退出透明模式
+
+UART1、UART2、UART3 均为 9600 8N1，一个字符时间约为 1.04 ms。固件使用 Receive-to-Idle 边界判定保护时间：
+
+1. `+++` 前必须出现 UART IDLE；
+2. 三个加号不会转交完整 AT Parser；
+3. 第三个加号后出现 UART IDLE 才确认退出；
+4. 退出后清除目标、清空 UART2/UART3 待回传数据并返回 `OK\r\n`；
+5. `abc+++def`、`++++` 或缺少任一侧静默的数据全部原样转发。
 
 ## 错误响应
 
@@ -72,6 +86,7 @@ cmake --build --preset Release
 2. 确认 FreeRTOS 启动后 PA8 保持高电平，LED2 常亮。
 3. 在 PB9 测量 25 kHz PWM；依次发送 0%、25%、50%、100%，确认占空比对应。
 4. 分别发送三路 NMOS 的 ON/OFF 指令，确认 ON 为高电平、OFF 为低电平。
-5. 单独启用 UART2、单独启用 UART3、同时启用两路，验证 UART1 非 AT 帧的目标选择。
-6. 从 UART2/UART3 注入包含 `00`、`0D`、`0A`、`FF` 的数据，确认 UART1 返回对应 HEX 事件。
-7. 让三路串口连续收发并触发一次线缆断连/重连，确认接收中断能够继续工作。
+5. 分别用 `AT+TRANS=1`、`2`、`1&2` 验证单目标和双目标原始字节传输。
+6. 在透明模式发送形似 AT 的 payload，确认它不执行；验证失败候选完整回放以及受保护 `+++` 成功退出。
+7. 从 UART2/UART3 注入包含 `00`、`0D`、`0A`、`FF` 的数据，确认 UART1 返回对应 HEX 事件。
+8. 让三路串口连续收发并触发一次线缆断连/重连，确认接收中断能够继续工作。
