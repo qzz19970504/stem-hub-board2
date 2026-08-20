@@ -16,6 +16,7 @@ $testCases = @(
     @{ Name = 'test_pwm_fade'; Sources = @('app_pwm_fade.c') },
     @{ Name = 'test_settings_record'; Sources = @('app_settings_record.c') },
     @{ Name = 'test_uart_tunnel'; Sources = @('app_uart_tunnel.c') },
+    @{ Name = 'test_transparent_mode'; Sources = @('app_transparent_mode.c') },
     @{ Name = 'test_output_state'; Sources = @('app_output_state.c') },
     @{ Name = 'test_status'; Sources = @('app_status.c', 'app_output_state.c') }
 )
