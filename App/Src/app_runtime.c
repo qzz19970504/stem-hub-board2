@@ -4,6 +4,7 @@
 
 #include "app_config.h"
 #include "app_ring_buffer.h"
+#include "app_uart_chunk_queue.h"
 #include "cmsis_os.h"
 #include "main.h"
 #include "task.h"
@@ -16,6 +17,8 @@ typedef struct
     uint8_t receive_chunk[APP_UART_RX_CHUNK_SIZE];
     uint8_t ring_storage[APP_UART_RING_BUFFER_SIZE];
     AppRingBuffer ring;
+    AppUartChunkQueue chunk_queue;
+    bool next_chunk_silence_before;
 } AppUartRuntime;
 
 static AppUartRuntime app_uart_runtimes[] = {
@@ -93,10 +96,12 @@ void App_RuntimeCreateObjects(void)
     {
         if (!AppRingBuffer_Init(&app_uart_runtimes[runtime_index].ring,
                                 app_uart_runtimes[runtime_index].ring_storage,
-                                sizeof(app_uart_runtimes[runtime_index].ring_storage)))
+                                sizeof(app_uart_runtimes[runtime_index].ring_storage))
+            || !AppUartChunkQueue_Init(&app_uart_runtimes[runtime_index].chunk_queue))
         {
             Error_Handler();
         }
+        app_uart_runtimes[runtime_index].next_chunk_silence_before = true;
     }
 
     app_uart1_rx_semaphore = osSemaphoreNew(32U, 0U, NULL);
@@ -140,6 +145,43 @@ bool App_RuntimePopRxByte(uint8_t uart_index, uint8_t *byte)
     return (runtime != NULL) && AppRingBuffer_Pop(&runtime->ring, byte);
 }
 
+bool App_RuntimePopUart1Chunk(uint8_t *bytes,
+                             size_t capacity,
+                             size_t *length,
+                             bool *silence_before,
+                             bool *silence_after)
+{
+    AppUartRuntime *runtime = App_RuntimeFindUartByIndex(1U);
+    AppUartChunk chunk;
+    size_t byte_index;
+
+    if ((runtime == NULL) || (bytes == NULL)
+        || (capacity < APP_UART_RX_CHUNK_SIZE) || (length == NULL)
+        || (silence_before == NULL) || (silence_after == NULL))
+    {
+        return false;
+    }
+
+    if (!AppUartChunkQueue_Pop(&runtime->chunk_queue, &chunk))
+    {
+        return false;
+    }
+
+    for (byte_index = 0U; byte_index < chunk.length; ++byte_index)
+    {
+        if (!AppRingBuffer_Pop(&runtime->ring, &bytes[byte_index]))
+        {
+            Error_Handler();
+            return false;
+        }
+    }
+
+    *length = chunk.length;
+    *silence_before = chunk.silence_before;
+    *silence_after = chunk.silence_after;
+    return true;
+}
+
 bool App_RuntimeConsumeRxOverflow(uint8_t uart_index)
 {
     AppUartRuntime *runtime = App_RuntimeFindUartByIndex(uart_index);
@@ -151,10 +193,13 @@ bool App_RuntimeConsumeRxOverflow(uint8_t uart_index)
     }
 
     taskENTER_CRITICAL();
-    has_overflowed = AppRingBuffer_HasOverflowed(&runtime->ring);
+    has_overflowed = AppRingBuffer_HasOverflowed(&runtime->ring)
+        || AppUartChunkQueue_HasOverflowed(&runtime->chunk_queue);
     if (has_overflowed)
     {
         AppRingBuffer_Reset(&runtime->ring);
+        AppUartChunkQueue_Reset(&runtime->chunk_queue);
+        runtime->next_chunk_silence_before = true;
     }
     taskEXIT_CRITICAL();
 
@@ -172,10 +217,12 @@ void App_RuntimeFlushRx(uint8_t uart_index)
 
     taskENTER_CRITICAL();
     AppRingBuffer_Reset(&runtime->ring);
+    AppUartChunkQueue_Reset(&runtime->chunk_queue);
+    runtime->next_chunk_silence_before = true;
     taskEXIT_CRITICAL();
 }
 
-void App_RuntimeSetBridgeEnabled(AppBridgeTarget target, bool enabled)
+static uint32_t App_RuntimeBridgeMaskForTarget(AppBridgeTarget target)
 {
     uint32_t flags = 0U;
 
@@ -188,23 +235,30 @@ void App_RuntimeSetBridgeEnabled(AppBridgeTarget target, bool enabled)
         flags |= APP_BRIDGE_MASK_UART3;
     }
 
-    App_RuntimeLockBridge();
-    if (enabled)
-    {
-        (void)osEventFlagsSet(app_bridge_flags, flags);
-        App_RuntimeUnlockBridge();
-        return;
-    }
+    return flags;
+}
 
-    (void)osEventFlagsClear(app_bridge_flags, flags);
-    if ((flags & APP_BRIDGE_MASK_UART2) != 0U)
-    {
-        App_RuntimeFlushRx(2U);
-    }
-    if ((flags & APP_BRIDGE_MASK_UART3) != 0U)
-    {
-        App_RuntimeFlushRx(3U);
-    }
+void App_RuntimeSelectBridgeTarget(AppBridgeTarget target)
+{
+    const uint32_t flags = App_RuntimeBridgeMaskForTarget(target);
+
+    App_RuntimeLockBridge();
+    (void)osEventFlagsClear(app_bridge_flags,
+                            APP_BRIDGE_MASK_UART2 | APP_BRIDGE_MASK_UART3);
+    App_RuntimeFlushRx(2U);
+    App_RuntimeFlushRx(3U);
+    (void)osEventFlagsSet(app_bridge_flags, flags);
+    App_RuntimeUnlockBridge();
+}
+
+void App_RuntimeClearBridgeTarget(void)
+{
+    App_RuntimeLockBridge();
+
+    (void)osEventFlagsClear(app_bridge_flags,
+                            APP_BRIDGE_MASK_UART2 | APP_BRIDGE_MASK_UART3);
+    App_RuntimeFlushRx(2U);
+    App_RuntimeFlushRx(3U);
     App_RuntimeUnlockBridge();
 }
 
@@ -275,6 +329,8 @@ HAL_StatusTypeDef App_RuntimeSendText(UART_HandleTypeDef *uart, const char *text
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *uart, uint16_t received_length)
 {
     AppUartRuntime *runtime = App_RuntimeFindUartByHandle(uart);
+    const bool silence_after = (uart != NULL)
+        && (HAL_UARTEx_GetRxEventType(uart) == HAL_UART_RXEVENT_IDLE);
     uint16_t byte_index;
 
     if (runtime == NULL)
@@ -289,7 +345,15 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *uart, uint16_t received_leng
 
     if (runtime->uart_index == 1U)
     {
-        (void)osSemaphoreRelease(app_uart1_rx_semaphore);
+        if (received_length > 0U)
+        {
+            (void)AppUartChunkQueue_Push(&runtime->chunk_queue,
+                                         received_length,
+                                         runtime->next_chunk_silence_before,
+                                         silence_after);
+            (void)osSemaphoreRelease(app_uart1_rx_semaphore);
+        }
+        runtime->next_chunk_silence_before = silence_after;
     }
     else
     {

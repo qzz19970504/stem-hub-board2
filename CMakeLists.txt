@@ -56,6 +56,8 @@ set(APP_SOURCES
     App/Src/app_runtime.c
     App/Src/app_tasks.c
     App/Src/app_uart_tunnel.c
+    App/Src/app_transparent_mode.c
+    App/Src/app_uart_chunk_queue.c
     App/Src/app_status.c
 )
 

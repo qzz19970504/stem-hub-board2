@@ -2,6 +2,7 @@
 #define APP_RUNTIME_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "app_at_protocol.h"
@@ -29,6 +30,15 @@ void App_RuntimeWaitForBridgeData(void);
 bool App_RuntimePopRxByte(uint8_t uart_index, uint8_t *byte);
 
 /**
+ * Pop one UART1 Receive-to-Idle chunk and its guard-time evidence.
+ */
+bool App_RuntimePopUart1Chunk(uint8_t *bytes,
+                             size_t capacity,
+                             size_t *length,
+                             bool *silence_before,
+                             bool *silence_after);
+
+/**
  * Consume an overflow marker and discard the affected port's queued bytes.
  */
 bool App_RuntimeConsumeRxOverflow(uint8_t uart_index);
@@ -36,8 +46,11 @@ bool App_RuntimeConsumeRxOverflow(uint8_t uart_index);
 /** Discard queued received bytes for a UART. */
 void App_RuntimeFlushRx(uint8_t uart_index);
 
-/** Enable or disable one bridge target. Disabling also flushes its RX queue. */
-void App_RuntimeSetBridgeEnabled(AppBridgeTarget target, bool enabled);
+/** Replace the active bridge mask with exactly one transparent target selection. */
+void App_RuntimeSelectBridgeTarget(AppBridgeTarget target);
+
+/** Disable all transparent targets and flush their queued RX bytes. */
+void App_RuntimeClearBridgeTarget(void);
 
 /** Return the current APP_BRIDGE_MASK_* bit set. */
 uint32_t App_RuntimeGetBridgeMask(void);
