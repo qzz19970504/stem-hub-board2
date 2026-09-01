@@ -2,3 +2,6 @@ build/
 .worktrees/
 *.exe
 mx.scratch/
+.clangd
+.settings/
+.vscode/
